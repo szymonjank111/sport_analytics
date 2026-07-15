@@ -1,25 +1,32 @@
 # ⚽ Football Analytics Pipeline
 
-Tygodniowy potok **batch ELT**, który pobiera wyniki meczów i statystyki
-zaawansowane (xG) z publicznych źródeł, ładuje je do hurtowni, modeluje w gwiazdę
-i serwuje dashboard odpowiadający na pytanie: **które drużyny i którzy zawodnicy
-przewyższają / zawodzą względem swojego xG?**
+Tygodniowy potok **batch ELT**, który pobiera wyniki i statystyki zaawansowane (xG)
+z **wielu europejskich lig**, ładuje je do hurtowni, modeluje w gwiazdę i serwuje
+analizy: **które drużyny i którzy zawodnicy przewyższają / zawodzą względem swojego
+xG — i jak wypadają w porównaniu między ligami?**
 
-Projekt portfolio z data engineeringu — celem jest pokazanie kompletnego warsztatu
-DE, a nie maksymalnej liczby technologii. Pełne uzasadnienia decyzji, model danych
-i fazy budowy opisuje [`plan.md`](./plan.md).
+Projekt ma dwóch odbiorców: **rekrutera** (kompletny warsztat data engineera) oraz
+**autora** — realne narzędzie do nauki statystyki i lepszego rozumienia piłki, ze
+szczególnym skupieniem na **Ekstraklasie**. Stąd rozbudowana warstwa analityczna
+(notebooki + interaktywna aplikacja Streamlit), a nie pojedynczy dashboard. Pełne
+uzasadnienia decyzji, źródła danych i fazy budowy opisuje [`plan.md`](./plan.md).
+
+**Zakres danych:** 12 lig na wynikach (football-data.org) · top-5 lig z xG
+(Understat) · Ekstraklasa osobno (API-Football + odpowiedzialny scraping FBref).
 
 ## Architektura
 
 ```
-football-data.org ─┐
-                    ├─▶ Python (requests + pydantic) ─▶ GCS raw (bronze)
-Understat (xG) ─────┘                                        │
-                                                             ▼
-                              BigQuery: raw ─▶ dbt staging (silver) ─▶ dbt marts (gold)
-                                                                              │
-                                                                              ▼
-                                                                     Looker Studio
+football-data.org (12 lig) ─┐
+Understat (xG, top-5) ───────┤
+API-Football (Ekstraklasa) ──┤─▶ Python (requests + pydantic) ─▶ GCS raw (bronze)
+FBref (xG Ekstraklasy) ──────┘   (scraping; dane prywatne)          │
+                                                                    ▼
+                          BigQuery: raw ─▶ dbt staging (silver) ─▶ dbt marts (gold)
+                                                                    │
+                                              ┌─────────────────────┼─────────────────┐
+                                              ▼                     ▼                 ▼
+                                        Notebooki (statystyka)  Streamlit (appka)  Looker Studio
 ```
 
 Orkiestracja: **Airflow** · Provisioning: **Terraform** · CI: **GitHub Actions**.
@@ -36,7 +43,9 @@ Orkiestracja: **Airflow** · Provisioning: **Terraform** · CI: **GitHub Actions
 | IaC | Terraform |
 | CI/CD | GitHub Actions |
 | Jakość kodu | uv, ruff, pytest, pre-commit |
-| Wizualizacja | Looker Studio |
+| Analityka + nauka | Jupyter, pandas, plotly |
+| Aplikacja | Streamlit |
+| Dashboard-wizytówka | Looker Studio |
 
 ## Szybki start (dev)
 
@@ -51,11 +60,14 @@ uv run pytest
 ## Struktura repo
 
 ```
-ingestion/   # pobieranie danych do warstwy raw (pydantic, klient GCS)
-dags/        # DAG-i Airflow (faza 5)
+ingestion/   # pobieranie danych do warstwy raw (pydantic, klient GCS, scrapery)
+dags/        # DAG-i Airflow (faza 7)
 dbt/         # modele staging/marts, seedy, snapshots, testy
-terraform/   # bucket GCS, datasety BigQuery, service account (faza 6)
+notebooks/   # eksploracja + nauka statystyki (faza 6)
+app/         # aplikacja Streamlit (faza 6)
+terraform/   # bucket GCS, datasety BigQuery, service account (faza 8)
 tests/       # pytest + fixtures
+data/        # lokalny cache/eksport — w .gitignore (dane FBref nigdy do repo)
 ```
 
 ## Status

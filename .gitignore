@@ -5,6 +5,14 @@
 service-account*.json
 gcp-key*.json
 
+# Dane lokalne — NIGDY do repo (m.in. zescrapowane dane FBref/Opta; ToS zabrania redystrybucji)
+/data/*
+!/data/.gitkeep
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
 # Python
 __pycache__/
 *.py[cod]
