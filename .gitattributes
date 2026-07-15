@@ -1,0 +1,2 @@
+# Spójne końce linii (LF) niezależnie od systemu — bez szumu CRLF w diffach.
+* text=auto eol=lf
