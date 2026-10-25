@@ -7,8 +7,11 @@ from pydantic.alias_generators import to_camel
 
 from sport_analytics.ingestion.errors import SourceError
 from sport_analytics.ingestion.http import TIMEOUT
+from sport_analytics.ingestion.rate_limit import RateLimiter
 
 BASE_URL = "https://api.football-data.org/v4"
+MIN_INTERVAL = 6.5
+"""Seconds between requests: the free plan allows 10 a minute, and this leaves a margin."""
 
 
 class _Contract(BaseModel):
@@ -72,12 +75,14 @@ class _Error(BaseModel):
 
 
 class FootballDataClient:
-    def __init__(self, api_key: str, session: requests.Session) -> None:
+    def __init__(self, api_key: str, session: requests.Session, limiter: RateLimiter) -> None:
         self._api_key = api_key
         self._session = session
+        self._limiter = limiter
 
     def fetch_matches(self, competition: str, season: int) -> bytes:
         """The body as sent, which the raw layer keeps unchanged."""
+        self._limiter.wait()
         try:
             response = self._session.get(
                 f"{BASE_URL}/competitions/{competition}/matches",

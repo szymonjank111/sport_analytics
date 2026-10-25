@@ -5,6 +5,7 @@ import requests
 from requests import PreparedRequest, Response
 from requests.adapters import BaseAdapter
 
+from sport_analytics.ingestion.rate_limit import RateLimiter
 from sport_analytics.ingestion.sources.football_data import FootballDataClient
 
 PL_MATCHES = (Path(__file__).parent / "fixtures/football_data/matches_PL_2026.json").read_bytes()
@@ -64,11 +65,29 @@ class FakeAdapter(BaseAdapter):
         pass
 
 
+class FakeClock:
+    """A monotonic clock whose sleeps only move it forward, and are kept."""
+
+    def __init__(self) -> None:
+        self.now = 0.0
+        self.sleeps: list[float] = []
+
+    def __call__(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+
 def session_with(adapter: FakeAdapter) -> requests.Session:
     session = requests.Session()
     session.mount("https://", adapter)
     return session
 
 
-def football_data_client(adapter: FakeAdapter) -> FootballDataClient:
-    return FootballDataClient("secret", session_with(adapter))
+def football_data_client(
+    adapter: FakeAdapter, limiter: RateLimiter | None = None
+) -> FootballDataClient:
+    """A client of the fake answers, by default not limited."""
+    return FootballDataClient("secret", session_with(adapter), limiter or RateLimiter(0))

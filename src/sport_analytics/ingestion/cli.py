@@ -8,7 +8,8 @@ from google.cloud import bigquery
 from sport_analytics.ingestion.extract import extract_football_data
 from sport_analytics.ingestion.http import build_session
 from sport_analytics.ingestion.loader import FOOTBALL_DATA_MATCHES, build_rows, load_partition
-from sport_analytics.ingestion.sources.football_data import FootballDataClient
+from sport_analytics.ingestion.rate_limit import RateLimiter
+from sport_analytics.ingestion.sources.football_data import MIN_INTERVAL, FootballDataClient
 from sport_analytics.ingestion.storage import GcsStorage
 from sport_analytics.settings import get_ingestion_settings
 
@@ -22,7 +23,9 @@ def main(argv: Sequence[str] | None = None) -> None:
         case "extract", "football-data":
             with build_session() as session:
                 client = FootballDataClient(
-                    settings.football_data_api_key.get_secret_value(), session
+                    settings.football_data_api_key.get_secret_value(),
+                    session,
+                    RateLimiter(MIN_INTERVAL),
                 )
                 extract_football_data(client, raw, args.competition, args.season, args.run_date)
         case "load", "football-data":

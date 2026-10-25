@@ -5,9 +5,10 @@ from typing import Any
 import pytest
 import requests
 
-from fakes import PL_MATCHES, FakeAdapter, football_data_client
+from fakes import PL_MATCHES, FakeAdapter, FakeClock, football_data_client
 from sport_analytics.ingestion.errors import SourceError
-from sport_analytics.ingestion.sources.football_data import parse_matches
+from sport_analytics.ingestion.rate_limit import RateLimiter
+from sport_analytics.ingestion.sources.football_data import MIN_INTERVAL, parse_matches
 
 Edit = Callable[[dict[str, Any]], object]
 
@@ -132,3 +133,14 @@ def test_a_fault_of_the_setup_keeps_its_traceback() -> None:
 
     with pytest.raises(requests.exceptions.InvalidHeader):
         client.fetch_matches("PL", 2026)
+
+
+def test_keeps_to_the_rate_limit_of_the_free_plan() -> None:
+    clock = FakeClock()
+    adapter = FakeAdapter((200, PL_MATCHES), (200, PL_MATCHES))
+    client = football_data_client(adapter, RateLimiter(MIN_INTERVAL, clock, clock.sleep))
+
+    client.fetch_matches("PL", 2026)
+    client.fetch_matches("PD", 2026)
+
+    assert clock.sleeps == [MIN_INTERVAL]
