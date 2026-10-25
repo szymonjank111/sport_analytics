@@ -1,0 +1,53 @@
+models:
+  - name: stg_football_data_co_uk__matches
+    description: >
+      Matches from football-data.co.uk, as of the latest run that fetched their season. Odds
+      stay in the raw payload until a private model reads them.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              [competition_code, season, home_team_key, away_team_key, match_date]
+    columns:
+      - name: competition_code
+        description: Division or extra league code in football-data.co.uk, such as E0 or POL.
+        data_tests:
+          - not_null
+          # Matches of a league missing from the seed would silently drop out of the marts.
+          - relationships:
+              arguments:
+                to: ref('competitions')
+                field: co_uk_code
+      - name: season
+        description: Start year of the season, such as 2026 for 2026/27.
+        data_tests:
+          - not_null
+      - name: match_date
+        data_tests:
+          - not_null
+      - name: home_team_key
+        description: Home team name in football-data.co.uk, which has no team IDs.
+        data_tests:
+          - not_null
+      - name: away_team_key
+        description: Away team name in football-data.co.uk.
+        data_tests:
+          - not_null
+      - name: home_goals
+        description: Full-time goals of the home team; null for a match never played.
+      - name: away_goals
+        description: Full-time goals of the away team; null for a match never played.
+      - name: result
+        description: H, D or A; null for a match never played.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [H, D, A]
+      - name: home_shots
+        description: Shots of the home team; null where the file has no match statistics.
+      - name: home_xg
+        description: xG of the home team, in division files since 2026/27.
+      - name: referee
+        description: Referee, where the file names one.
+      - name: run_date
+        description: Date of the run whose file the row comes from.

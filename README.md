@@ -64,11 +64,13 @@ uv run --env-file .env dbt deps
 ```
 
 Run the pipeline for a day. The run date decides where the data lands, so a rerun of the
-same day replaces it:
+same day replaces it. Finished seasons of football-data.co.uk are fetched only once:
 
 ```bash
 uv run ingest extract football-data --run-date 2026-10-25    # every competition, this season
 uv run ingest load football-data --run-date 2026-10-25
+uv run ingest extract football-data-co-uk --history-from 2017 --run-date 2026-10-25
+uv run ingest load football-data-co-uk --run-date 2026-10-25
 uv run --env-file .env dbt build
 uv run --env-file .env streamlit run app/streamlit_app.py
 ```

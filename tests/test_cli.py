@@ -4,11 +4,14 @@ import pytest
 
 from fakes import (
     CL_MATCHES,
+    E0_SEASON,
     PL_MATCHES,
+    POL_SEASONS,
     FakeAdapter,
     FakeWarehouse,
     InMemoryStorage,
     football_data_client,
+    football_data_co_uk_client,
 )
 from sport_analytics.ingestion.cli import Deps, parse_args, run
 from sport_analytics.ingestion.paths import parse_raw_path
@@ -21,7 +24,10 @@ LOAD = parse_args(shlex.split("load football-data --run-date 2026-10-25"))
 
 
 def deps(storage: InMemoryStorage, warehouse: FakeWarehouse, *responses: tuple[int, bytes]) -> Deps:
-    return Deps(storage, football_data_client(FakeAdapter(*responses)), warehouse)
+    adapter = FakeAdapter(*responses)
+    return Deps(
+        storage, football_data_client(adapter), football_data_co_uk_client(adapter), warehouse
+    )
 
 
 def stored_seasons(storage: InMemoryStorage) -> set[tuple[str, int | None]]:
@@ -106,3 +112,17 @@ def test_the_run_date_is_required() -> None:
         parse_args(shlex.split("load football-data"))
 
     assert exit_info.value.code == 2
+
+
+def test_extracts_the_history_of_a_division_and_loads_it_with_an_extra_league() -> None:
+    storage, warehouse = InMemoryStorage(), FakeWarehouse()
+    answers = [(200, E0_SEASON)] * 3 + [(200, POL_SEASONS)]
+    day = deps(storage, warehouse, *answers)
+    command = "football-data-co-uk --competition E0 --competition POL --history-from 2024"
+
+    run(parse_args(["extract", *shlex.split(command), "--run-date", "2026-10-25"]), day)
+    run(parse_args(["load", "football-data-co-uk", "--run-date", "2026-10-25"]), day)
+
+    assert stored_seasons(storage) == {("E0", 2024), ("E0", 2025), ("E0", 2026), ("POL", None)}
+    [rows] = warehouse.partitions.values()
+    assert len(rows) == 3 * 3 + 3

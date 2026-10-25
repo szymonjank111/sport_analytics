@@ -5,6 +5,12 @@ from urllib3.util import Retry
 USER_AGENT = "sport-analytics/0.1 (+https://github.com/szymonjank111/sport_analytics)"
 TIMEOUT = (5, 30)
 """Seconds to connect and to wait for each read."""
+NETWORK_ERRORS = (
+    requests.ConnectionError,
+    requests.Timeout,
+    requests.exceptions.ChunkedEncodingError,
+)
+"""What the source or the network is to blame for; a bad header or URL is a fault of the setup."""
 
 
 def build_session(backoff_factor: float = 2.0) -> requests.Session:

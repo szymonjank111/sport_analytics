@@ -7,11 +7,13 @@ from datetime import UTC, date, datetime
 from google.cloud import bigquery
 
 from sport_analytics.ingestion.errors import NothingToLoadError, SourceError
-from sport_analytics.ingestion.extract import extract_football_data
+from sport_analytics.ingestion.extract import extract_football_data, extract_football_data_co_uk
 from sport_analytics.ingestion.http import build_session
 from sport_analytics.ingestion.loader import (
+    FOOTBALL_DATA_CO_UK_MATCHES,
     FOOTBALL_DATA_MATCHES,
     BigQueryWarehouse,
+    RawEntity,
     Warehouse,
     build_rows,
 )
@@ -23,6 +25,14 @@ from sport_analytics.ingestion.sources.football_data import (
     MIN_INTERVAL,
     FootballDataClient,
 )
+from sport_analytics.ingestion.sources.football_data_co_uk import (
+    DIVISIONS,
+    EXTRA_LEAGUES,
+    FootballDataCoUkClient,
+)
+from sport_analytics.ingestion.sources.football_data_co_uk import (
+    MIN_INTERVAL as CO_UK_MIN_INTERVAL,
+)
 from sport_analytics.ingestion.storage import GcsStorage, Storage
 from sport_analytics.settings import get_ingestion_settings
 
@@ -33,6 +43,7 @@ logger = logging.getLogger(__name__)
 class Deps:
     storage: Storage
     football_data: FootballDataClient
+    football_data_co_uk: FootballDataCoUkClient
     warehouse: Warehouse
 
 
@@ -49,6 +60,7 @@ def main(argv: Sequence[str] | None = None) -> None:
                 session,
                 RateLimiter(MIN_INTERVAL),
             ),
+            football_data_co_uk=FootballDataCoUkClient(session, RateLimiter(CO_UK_MIN_INTERVAL)),
             warehouse=BigQueryWarehouse(
                 bigquery.Client(project=settings.gcp_project_id, location=settings.gcp_location),
                 settings.bq_raw_dataset,
@@ -69,10 +81,18 @@ def run(args: argparse.Namespace, deps: Deps) -> None:
                     extract_football_data(
                         deps.football_data, deps.storage, competition, season, args.run_date
                     )
+            case "extract", "football-data-co-uk":
+                extract_football_data_co_uk(
+                    deps.football_data_co_uk,
+                    deps.storage,
+                    args.competition or (*DIVISIONS, *EXTRA_LEAGUES),
+                    _co_uk_seasons(args),
+                    args.run_date,
+                )
             case "load", "football-data":
-                loaded_at = datetime.now(UTC)
-                rows = build_rows(deps.storage, FOOTBALL_DATA_MATCHES, args.run_date, loaded_at)
-                deps.warehouse.load_partition(FOOTBALL_DATA_MATCHES, args.run_date, rows)
+                _load(deps, FOOTBALL_DATA_MATCHES, args.run_date)
+            case "load", "football-data-co-uk":
+                _load(deps, FOOTBALL_DATA_CO_UK_MATCHES, args.run_date)
             case command:
                 raise AssertionError(f"unhandled command {command}")
     except (SourceError, NothingToLoadError) as error:
@@ -80,6 +100,17 @@ def run(args: argparse.Namespace, deps: Deps) -> None:
         context = " ".join(f"{name}={value}" for name, value in vars(args).items())
         logger.error("failed %s error=%s", context, error)
         raise SystemExit(1) from None
+
+
+def _co_uk_seasons(args: argparse.Namespace) -> list[int]:
+    current = current_season(args.run_date)
+    history = range(args.history_from, current + 1) if args.history_from else ()
+    return sorted({*(args.season or ()), *history}) or [current]
+
+
+def _load(deps: Deps, entity: RawEntity, run_date: date) -> None:
+    rows = build_rows(deps.storage, entity, run_date, datetime.now(UTC))
+    deps.warehouse.load_partition(entity, run_date, rows)
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -108,9 +139,31 @@ def _parser() -> argparse.ArgumentParser:
     )
     _add_run_date(football_data)
 
+    co_uk = sources.add_parser(
+        "football-data-co-uk", help="Matches of division seasons and of extra leagues."
+    )
+    co_uk.add_argument(
+        "--competition",
+        action="append",
+        choices=(*DIVISIONS, *EXTRA_LEAGUES),
+        help="division such as E0, or extra league such as POL, whose file has every season;"
+        " repeat it for more; all of them by default",
+    )
+    co_uk.add_argument(
+        "--season",
+        type=int,
+        action="append",
+        help="start year of a division season; repeat it for more; the current one by default",
+    )
+    co_uk.add_argument(
+        "--history-from", type=int, help="start year of the first season to fetch, up to now"
+    )
+    _add_run_date(co_uk)
+
     load = commands.add_parser("load", help="Load the files of a run from GCS into BigQuery.")
     sources = load.add_subparsers(dest="source", required=True)
     _add_run_date(sources.add_parser("football-data", help="Matches."))
+    _add_run_date(sources.add_parser("football-data-co-uk", help="Matches."))
     return parser
 
 

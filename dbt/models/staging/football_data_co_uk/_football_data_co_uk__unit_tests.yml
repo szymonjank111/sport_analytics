@@ -1,0 +1,38 @@
+unit_tests:
+  - name: co_uk_matches_come_from_the_latest_file_of_their_season
+    model: stg_football_data_co_uk__matches
+    description: >
+      The newer file of the 2026 Premier League replaces the older one, the season of an extra
+      league comes from its Season column, a 2017/18 date has a two-digit year and a match never
+      played keeps null goals.
+    given:
+      # SQL, since the other formats cannot express a JSON payload. Fields left out read as null.
+      - input: source('football_data_co_uk', 'matches')
+        format: sql
+        rows: |
+          select
+            date '2026-08-22' as _run_date, 'E0' as _competition, 2026 as _season,
+            'gs://raw/old.csv' as _gcs_uri, timestamp '2026-08-22 06:00:00+00' as _loaded_at,
+            json '{"Date": "21/08/2026", "HomeTeam": "Arsenal", "AwayTeam": "Coventry", "FTHG": "2", "FTAG": "0", "FTR": "H", "HS": "17", "AS": "6"}' as payload
+          union all
+          select
+            date '2026-08-24', 'E0', 2026, 'gs://raw/new.csv', timestamp '2026-08-24 06:00:00+00',
+            json '{"Date": "21/08/2026", "HomeTeam": "Arsenal", "AwayTeam": "Coventry", "FTHG": "2", "FTAG": "0", "FTR": "H", "HS": "17", "AS": "6"}'
+          union all
+          select
+            date '2026-08-24', 'E0', 2026, 'gs://raw/new.csv', timestamp '2026-08-24 06:00:00+00',
+            json '{"Date": "23/08/2026", "HomeTeam": "Hull", "AwayTeam": "Liverpool", "FTHG": "0", "FTAG": "3", "FTR": "A", "HS": "", "AS": ""}'
+          union all
+          select
+            date '2026-08-24', 'E1', 2017, 'gs://raw/e1.csv', timestamp '2026-08-24 06:00:00+00',
+            json '{"Date": "04/08/17", "HomeTeam": "Sunderland", "AwayTeam": "Derby", "FTHG": "1", "FTAG": "1", "FTR": "D"}'
+          union all
+          select
+            date '2026-08-24', 'POL', null, 'gs://raw/pol.csv', timestamp '2026-08-24 06:00:00+00',
+            json '{"Season": "2026/2027", "Date": "19/07/2026", "Home": "Cracovia", "Away": "Wisla Plock", "HG": "", "AG": "", "Res": ""}'
+    expect:
+      rows:
+        - {competition_code: E0, season: 2026, match_date: 2026-08-21, home_team_key: Arsenal, home_goals: 2, result: H, home_shots: 17, away_shots: 6, run_date: 2026-08-24}
+        - {competition_code: E0, season: 2026, match_date: 2026-08-23, home_team_key: Hull, home_goals: 0, result: A, home_shots: null, away_shots: null, run_date: 2026-08-24}
+        - {competition_code: E1, season: 2017, match_date: 2017-08-04, home_team_key: Sunderland, home_goals: 1, result: D, home_shots: null, away_shots: null, run_date: 2026-08-24}
+        - {competition_code: POL, season: 2026, match_date: 2026-07-19, home_team_key: Cracovia, home_goals: null, result: null, home_shots: null, away_shots: null, run_date: 2026-08-24}

@@ -2,8 +2,11 @@ import re
 from dataclasses import dataclass
 from datetime import date
 
+PRIVATE_SOURCES = frozenset({"football_data_co_uk"})
+"""Sources whose terms allow private use only, so their files stay apart, under raw_private/."""
+
 _RAW_PATH = re.compile(
-    r"raw/source=(?P<source>\w+)/run_date=(?P<run_date>\d{4}-\d{2}-\d{2})"
+    r"raw(?:_private)?/source=(?P<source>\w+)/run_date=(?P<run_date>\d{4}-\d{2}-\d{2})"
     r"/competition=(?P<competition>\w+)(?:/season=(?P<season>\d{4}))?"
     r"/(?P<entity>\w+)\.(?P<extension>\w+)"
 )
@@ -31,9 +34,14 @@ class RawObject:
         )
 
 
+def source_prefix(source: str) -> str:
+    root = "raw_private" if source in PRIVATE_SOURCES else "raw"
+    return f"{root}/source={source}/"
+
+
 def run_prefix(source: str, run_date: date) -> str:
     """Where all files of one run are, so a load lists a single prefix."""
-    return f"raw/source={source}/run_date={run_date.isoformat()}/"
+    return f"{source_prefix(source)}run_date={run_date.isoformat()}/"
 
 
 def parse_raw_path(path: str) -> RawObject:
@@ -41,7 +49,7 @@ def parse_raw_path(path: str) -> RawObject:
     if match is None:
         raise ValueError(f"not a raw path: {path}")
     season = match["season"]
-    return RawObject(
+    raw = RawObject(
         source=match["source"],
         run_date=date.fromisoformat(match["run_date"]),
         competition=match["competition"],
@@ -49,3 +57,7 @@ def parse_raw_path(path: str) -> RawObject:
         entity=match["entity"],
         extension=match["extension"],
     )
+    # The round trip also catches a source under the wrong root, such as a private one in raw/.
+    if raw.path != path:
+        raise ValueError(f"not a raw path: {path}")
+    return raw

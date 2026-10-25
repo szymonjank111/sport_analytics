@@ -10,12 +10,18 @@ from requests.adapters import BaseAdapter
 from sport_analytics.ingestion.loader import RawEntity
 from sport_analytics.ingestion.rate_limit import RateLimiter
 from sport_analytics.ingestion.sources.football_data import FootballDataClient
+from sport_analytics.ingestion.sources.football_data_co_uk import FootballDataCoUkClient
 
 FIXTURES = Path(__file__).parent / "fixtures"
 PL_MATCHES = (FIXTURES / "football_data/matches_PL_2026.json").read_bytes()
 """An answer of football-data.org for the 2026 Premier League, cut down to three matches."""
 CL_MATCHES = (FIXTURES / "football_data/matches_CL_2026.json").read_bytes()
 """The same for the Champions League: the league stage, a knockout tie and the final."""
+E0_SEASON = (FIXTURES / "football_data_co_uk/E0_2026.csv").read_bytes()
+"""A file of football-data.co.uk in the shape of a 2026 Premier League one, with made-up
+matches, since the terms of the source allow private use only."""
+POL_SEASONS = (FIXTURES / "football_data_co_uk/POL.csv").read_bytes()
+"""The same for the extra league file of the Ekstraklasa, with a match that was never played."""
 
 
 class InMemoryStorage:
@@ -111,3 +117,8 @@ def football_data_client(
 ) -> FootballDataClient:
     """A client of the fake answers, by default not limited."""
     return FootballDataClient("secret", session_with(adapter), limiter or RateLimiter(0))
+
+
+def football_data_co_uk_client(adapter: FakeAdapter) -> FootballDataCoUkClient:
+    """A client of the fake answers, not limited."""
+    return FootballDataCoUkClient(session_with(adapter), RateLimiter(0))

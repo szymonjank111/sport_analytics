@@ -5,8 +5,8 @@ import requests
 from pydantic import AliasChoices, AwareDatetime, BaseModel, ConfigDict, Field, ValidationError
 from pydantic.alias_generators import to_camel
 
-from sport_analytics.ingestion.errors import SourceError
-from sport_analytics.ingestion.http import TIMEOUT
+from sport_analytics.ingestion.errors import SourceError, broken_contract
+from sport_analytics.ingestion.http import NETWORK_ERRORS, TIMEOUT
 from sport_analytics.ingestion.rate_limit import RateLimiter
 
 BASE_URL = "https://api.football-data.org/v4"
@@ -94,12 +94,7 @@ class FootballDataClient:
                 headers={"X-Auth-Token": self._api_key},
                 timeout=TIMEOUT,
             )
-        # Only what the source is to blame for; a bad header or URL is a fault of the setup.
-        except (
-            requests.ConnectionError,
-            requests.Timeout,
-            requests.exceptions.ChunkedEncodingError,
-        ) as error:
+        except NETWORK_ERRORS as error:
             raise SourceError(
                 f"football-data.org did not answer for {competition} {season}: {error}"
             ) from error
@@ -124,13 +119,7 @@ def parse_matches(body: bytes) -> list[dict[str, Any]]:
     try:
         MatchesResponse.model_validate_json(body)
     except ValidationError as error:
-        # One line, not pydantic's own message, which lists every error over many lines.
-        first, *others = error.errors()
-        where = ".".join(str(part) for part in first["loc"]) or "the body"
-        more = f" (and {len(others)} more)" if others else ""
-        raise SourceError(
-            f"football-data.org broke the matches contract at {where}: {first['msg']}{more}"
-        ) from None
+        raise broken_contract("football-data.org", "matches", error) from None
     return split_matches(body)
 
 

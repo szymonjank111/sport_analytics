@@ -1,0 +1,19 @@
+sources:
+  - name: football_data_co_uk
+    description: >
+      CSV files from football-data.co.uk, one row per match and run: a file for each season of
+      a division and one file with every season of an extra league.
+    schema: "{{ env_var('BQ_RAW_DATASET', 'raw') }}"
+    config:
+      meta:
+        # The terms allow private use only: results and statistics are facts, but the files and
+        # the odds never become public.
+        redistribution: private
+      loaded_at_field: _loaded_at
+      # The site updates twice a week, so a week without data means the ingestion stopped.
+      freshness:
+        warn_after: {count: 8, period: day}
+        error_after: {count: 15, period: day}
+    tables:
+      - name: matches
+        identifier: football_data_co_uk__matches
