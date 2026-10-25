@@ -1,7 +1,7 @@
 sport_analytics:
   target: dev
   outputs:
-    dev:
+    dev: &bigquery
       type: bigquery
       method: oauth
       project: "{{ env_var('GCP_PROJECT_ID') }}"
@@ -12,3 +12,8 @@ sport_analytics:
       job_execution_timeout_seconds: 300
       # A cost fuse: BigQuery refuses any query that would scan more than 1 GB.
       maximum_bytes_billed: 1000000000
+    ci: *bigquery
+    prod:
+      <<: *bigquery
+      # Every model sets a custom schema, which prod uses as is, so nothing lands here.
+      dataset: prod_default
