@@ -4,19 +4,30 @@ models:
     columns:
       - name: competition_id
         description: Canonical competition ID, such as ENG1.
+        data_type: string
+        constraints:
+          - type: not_null
         data_tests:
           - unique
-          - not_null
+      - name: name
+        data_type: string
+      - name: country
+        data_type: string
       - name: tier
         description: Level in the national league pyramid, 1 for the top flight.
+        data_type: int64
       - name: season_calendar
         description: split for seasons from autumn to spring, calendar for seasons within a year.
+        data_type: string
       - name: has_xg
         description: Whether a source covers xG for the competition.
+        data_type: bool
       - name: has_match_stats
         description: Whether a source covers shots, corners and cards.
+        data_type: bool
       - name: has_odds
         description: Whether a source covers betting odds.
+        data_type: bool
 
   - name: dim_teams
     description: >
@@ -25,9 +36,15 @@ models:
     columns:
       - name: team_id
         description: Slug of the club name, such as manchester-united.
+        data_type: string
+        constraints:
+          - type: not_null
         data_tests:
           - unique
-          - not_null
+      - name: name
+        data_type: string
+      - name: country
+        data_type: string
 
   - name: dim_dates
     description: >
@@ -36,13 +53,23 @@ models:
     columns:
       - name: date_day
         description: The day.
+        data_type: date
+        constraints:
+          - type: not_null
         data_tests:
           - unique
-          - not_null
+      - name: year
+        data_type: int64
+      - name: month
+        data_type: int64
       - name: iso_day_of_week
         description: Day of the week from 1 for Monday to 7 for Sunday.
+        data_type: int64
       - name: day_name
         description: English name of the day of the week.
+        data_type: string
+      - name: is_weekend
+        data_type: bool
 
   - name: fct_matches
     description: One row per match, with its result once played.
@@ -55,47 +82,79 @@ models:
         description: >
           Hash of competition, season and teams: in a league each pair meets at home once a
           season, so the key holds whatever the source or the kick-off date.
+        data_type: string
+        constraints:
+          - type: not_null
         data_tests:
           - unique
-          - not_null
       - name: competition_id
+        data_type: string
+        constraints:
+          - type: not_null
         data_tests:
-          - not_null
           - relationships:
               arguments:
                 to: ref('dim_competitions')
                 field: competition_id
       - name: season
         description: Start year of the season, such as 2026 for 2026/27.
+        data_type: int64
+        constraints:
+          - type: not_null
+      - name: matchday
+        description: Round of the league.
+        data_type: int64
+      - name: kickoff_at
+        data_type: timestamp
+        constraints:
+          - type: not_null
       - name: match_date
         description: Kick-off date in UTC.
+        data_type: date
+        constraints:
+          - type: not_null
       - name: status
+        data_type: string
+        constraints:
+          - type: not_null
         data_tests:
           - accepted_values:
               arguments:
                 values: [scheduled, in_play, finished, suspended, postponed, cancelled, awarded]
       - name: home_team_id
+        data_type: string
+        constraints:
+          - type: not_null
         data_tests:
-          - not_null
           - relationships:
               arguments:
                 to: ref('dim_teams')
                 field: team_id
       - name: away_team_id
+        data_type: string
+        constraints:
+          - type: not_null
         data_tests:
-          - not_null
           - relationships:
               arguments:
                 to: ref('dim_teams')
                 field: team_id
+      - name: home_goals
+        description: Full-time goals of the home team; null until the match is played.
+        data_type: int64
+      - name: away_goals
+        description: Full-time goals of the away team; null until the match is played.
+        data_type: int64
       - name: result
         description: H, D or A once the match is finished or awarded, otherwise null.
+        data_type: string
         data_tests:
           - accepted_values:
               arguments:
                 values: [H, D, A]
       - name: football_data_match_id
         description: Match ID in football-data.org.
+        data_type: int64
         data_tests:
           - unique
 
@@ -109,30 +168,67 @@ models:
             combination_of_columns: [match_key, team_id]
     columns:
       - name: match_key
+        data_type: string
+        constraints:
+          - type: not_null
         data_tests:
-          - not_null
           - relationships:
               arguments:
                 to: ref('fct_matches')
                 field: match_key
       - name: team_id
+        data_type: string
+        constraints:
+          - type: not_null
         data_tests:
-          - not_null
           - relationships:
               arguments:
                 to: ref('dim_teams')
                 field: team_id
       - name: opponent_id
-        data_tests:
-          - not_null
+        data_type: string
+        constraints:
+          - type: not_null
+      - name: is_home
+        data_type: bool
+        constraints:
+          - type: not_null
+      - name: competition_id
+        data_type: string
+        constraints:
+          - type: not_null
+      - name: season
+        data_type: int64
+        constraints:
+          - type: not_null
+      - name: matchday
+        data_type: int64
+      - name: match_date
+        data_type: date
+        constraints:
+          - type: not_null
+      - name: goals_for
+        data_type: int64
+        constraints:
+          - type: not_null
+      - name: goals_against
+        data_type: int64
+        constraints:
+          - type: not_null
       - name: result
         description: W, D or L for the team.
+        data_type: string
+        constraints:
+          - type: not_null
         data_tests:
           - accepted_values:
               arguments:
                 values: [W, D, L]
       - name: points
         description: 3 for a win, 1 for a draw, 0 for a loss.
+        data_type: int64
+        constraints:
+          - type: not_null
 
   - name: fct_standings
     description: >
@@ -144,15 +240,46 @@ models:
           arguments:
             combination_of_columns: [competition_id, season, matchday, team_id]
     columns:
+      - name: competition_id
+        data_type: string
+        constraints:
+          - type: not_null
+      - name: season
+        data_type: int64
+        constraints:
+          - type: not_null
       - name: matchday
         description: The round after which the table stands.
+        data_type: int64
+        constraints:
+          - type: not_null
       - name: team_id
+        data_type: string
+        constraints:
+          - type: not_null
         data_tests:
           - relationships:
               arguments:
                 to: ref('dim_teams')
                 field: team_id
+      - name: played
+        data_type: int64
+      - name: wins
+        data_type: int64
+      - name: draws
+        data_type: int64
+      - name: losses
+        data_type: int64
+      - name: goals_for
+        data_type: int64
+      - name: goals_against
+        data_type: int64
+      - name: goal_difference
+        data_type: int64
+      - name: points
+        data_type: int64
       - name: position
         description: Rank in the table; teams level on every criterion share it.
-        data_tests:
-          - not_null
+        data_type: int64
+        constraints:
+          - type: not_null

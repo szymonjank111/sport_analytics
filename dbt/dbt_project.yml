@@ -13,6 +13,8 @@ models:
     marts:
       +schema: marts_public
       +materialized: table
+      +contract:
+        enforced: true
 
 seeds:
   sport_analytics:
