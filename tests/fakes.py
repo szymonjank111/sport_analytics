@@ -1,10 +1,13 @@
 from collections.abc import Mapping
+from datetime import date
 from pathlib import Path
+from typing import Any
 
 import requests
 from requests import PreparedRequest, Response
 from requests.adapters import BaseAdapter
 
+from sport_analytics.ingestion.loader import RawEntity
 from sport_analytics.ingestion.rate_limit import RateLimiter
 from sport_analytics.ingestion.sources.football_data import FootballDataClient
 
@@ -28,6 +31,15 @@ class InMemoryStorage:
 
     def uri(self, path: str) -> str:
         return f"memory://{path}"
+
+
+class FakeWarehouse:
+    def __init__(self) -> None:
+        self.partitions: dict[tuple[str, date], list[dict[str, Any]]] = {}
+        """Rows by table and run date."""
+
+    def load_partition(self, entity: RawEntity, run_date: date, rows: list[dict[str, Any]]) -> None:
+        self.partitions[entity.table, run_date] = rows
 
 
 class FakeAdapter(BaseAdapter):

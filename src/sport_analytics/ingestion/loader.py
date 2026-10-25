@@ -2,7 +2,7 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Protocol
 
 from google.cloud import bigquery
 
@@ -63,23 +63,28 @@ def build_rows(
     ]
 
 
-def load_partition(
-    client: bigquery.Client,
-    dataset: str,
-    entity: RawEntity,
-    run_date: date,
-    rows: list[dict[str, Any]],
-) -> None:
-    table_id = f"{client.project}.{dataset}.{entity.table}"
-    table = bigquery.Table(table_id, schema=RAW_SCHEMA)
-    table.time_partitioning = bigquery.TimePartitioning(field="_run_date")
-    table.clustering_fields = ["_competition"]
-    client.create_table(table, exists_ok=True)
-    # The decorator narrows WRITE_TRUNCATE to the partition of the run, so a rerun replaces it.
-    job_config = bigquery.LoadJobConfig(
-        schema=RAW_SCHEMA, write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE
-    )
-    client.load_table_from_json(
-        rows, f"{table_id}${run_date:%Y%m%d}", job_config=job_config
-    ).result()
-    logger.info("loaded table=%s run_date=%s rows=%d", entity.table, run_date, len(rows))
+class Warehouse(Protocol):
+    def load_partition(self, entity: RawEntity, run_date: date, rows: list[dict[str, Any]]) -> None:
+        """Replaces the partition of the run in the raw table of the entity with the rows."""
+        ...
+
+
+class BigQueryWarehouse:
+    def __init__(self, client: bigquery.Client, dataset: str) -> None:
+        self._client = client
+        self._dataset = dataset
+
+    def load_partition(self, entity: RawEntity, run_date: date, rows: list[dict[str, Any]]) -> None:
+        table_id = f"{self._client.project}.{self._dataset}.{entity.table}"
+        table = bigquery.Table(table_id, schema=RAW_SCHEMA)
+        table.time_partitioning = bigquery.TimePartitioning(field="_run_date")
+        table.clustering_fields = ["_competition"]
+        self._client.create_table(table, exists_ok=True)
+        # The decorator narrows WRITE_TRUNCATE to the partition of the run, so a rerun replaces it.
+        job_config = bigquery.LoadJobConfig(
+            schema=RAW_SCHEMA, write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE
+        )
+        self._client.load_table_from_json(
+            rows, f"{table_id}${run_date:%Y%m%d}", job_config=job_config
+        ).result()
+        logger.info("loaded table=%s run_date=%s rows=%d", entity.table, run_date, len(rows))
