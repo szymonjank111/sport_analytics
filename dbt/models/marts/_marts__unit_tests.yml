@@ -1,0 +1,40 @@
+unit_tests:
+  - name: team_matches_give_each_side_its_points
+    model: fct_team_matches
+    given:
+      - input: ref('fct_matches')
+        rows:
+          - {match_key: win, home_team_id: arsenal, away_team_id: chelsea, home_goals: 2, away_goals: 1, result: H}
+          - {match_key: draw, home_team_id: everton, away_team_id: fulham, home_goals: 1, away_goals: 1, result: D}
+          - {match_key: unplayed, home_team_id: hull-city, away_team_id: liverpool, result: null}
+    expect:
+      rows:
+        - {match_key: win, team_id: arsenal, opponent_id: chelsea, is_home: true, goals_for: 2, goals_against: 1, result: W, points: 3}
+        - {match_key: win, team_id: chelsea, opponent_id: arsenal, is_home: false, goals_for: 1, goals_against: 2, result: L, points: 0}
+        - {match_key: draw, team_id: everton, opponent_id: fulham, is_home: true, goals_for: 1, goals_against: 1, result: D, points: 1}
+        - {match_key: draw, team_id: fulham, opponent_id: everton, is_home: false, goals_for: 1, goals_against: 1, result: D, points: 1}
+
+  - name: standings_add_up_rounds_and_break_ties_on_goal_difference
+    model: fct_standings
+    description: >
+      Arsenal beats Brentford 2-0 while Chelsea rests, then Chelsea beats Brentford 3-0 while
+      Arsenal rests: level on points, Chelsea goes top on goal difference.
+    given:
+      - input: ref('fct_matches')
+        rows:
+          - {competition_id: ENG1, season: 2026, home_team_id: arsenal, away_team_id: brentford}
+          - {competition_id: ENG1, season: 2026, home_team_id: chelsea, away_team_id: brentford}
+      - input: ref('fct_team_matches')
+        rows:
+          - {match_key: m1, competition_id: ENG1, season: 2026, matchday: 1, team_id: arsenal, goals_for: 2, goals_against: 0, result: W, points: 3}
+          - {match_key: m1, competition_id: ENG1, season: 2026, matchday: 1, team_id: brentford, goals_for: 0, goals_against: 2, result: L, points: 0}
+          - {match_key: m2, competition_id: ENG1, season: 2026, matchday: 2, team_id: chelsea, goals_for: 3, goals_against: 0, result: W, points: 3}
+          - {match_key: m2, competition_id: ENG1, season: 2026, matchday: 2, team_id: brentford, goals_for: 0, goals_against: 3, result: L, points: 0}
+    expect:
+      rows:
+        - {matchday: 1, team_id: arsenal, played: 1, wins: 1, losses: 0, goal_difference: 2, points: 3, position: 1}
+        - {matchday: 1, team_id: chelsea, played: 0, wins: 0, losses: 0, goal_difference: 0, points: 0, position: 2}
+        - {matchday: 1, team_id: brentford, played: 1, wins: 0, losses: 1, goal_difference: -2, points: 0, position: 3}
+        - {matchday: 2, team_id: chelsea, played: 1, wins: 1, losses: 0, goal_difference: 3, points: 3, position: 1}
+        - {matchday: 2, team_id: arsenal, played: 1, wins: 1, losses: 0, goal_difference: 2, points: 3, position: 2}
+        - {matchday: 2, team_id: brentford, played: 2, wins: 0, losses: 2, goal_difference: -5, points: 0, position: 3}
