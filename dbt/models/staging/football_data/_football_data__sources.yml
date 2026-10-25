@@ -5,6 +5,11 @@ sources:
     config:
       meta:
         redistribution: public
+      loaded_at_field: _loaded_at
+      # A round is played every week of a season, so data older than that is stale.
+      freshness:
+        warn_after: {count: 8, period: day}
+        error_after: {count: 15, period: day}
     tables:
       - name: matches
         identifier: football_data__matches
