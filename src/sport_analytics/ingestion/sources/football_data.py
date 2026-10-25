@@ -1,3 +1,4 @@
+import json
 from typing import Any
 
 import requests
@@ -45,6 +46,14 @@ def parse_matches(body: bytes) -> list[dict[str, Any]]:
         return _Matches.model_validate_json(body).matches
     except ValidationError as error:
         raise SourceError(f"football-data.org sent no list of matches: {error}") from error
+
+
+def split_matches(body: bytes) -> list[dict[str, Any]]:
+    """The matches of a stored answer, which passed the contract when it was extracted.
+
+    Not checked again: a stricter contract later on must not lock old runs out of a reload.
+    """
+    return json.loads(body)["matches"]
 
 
 def _error_message(response: requests.Response) -> str:

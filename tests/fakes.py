@@ -19,6 +19,12 @@ class InMemoryStorage:
     def write(self, path: str, data: bytes, content_type: str) -> None:
         self.objects[path] = (data, content_type)
 
+    def read(self, path: str) -> bytes:
+        return self.objects[path][0]
+
+    def list_paths(self, prefix: str) -> list[str]:
+        return sorted(path for path in self.objects if path.startswith(prefix))
+
     def uri(self, path: str) -> str:
         return f"memory://{path}"
 

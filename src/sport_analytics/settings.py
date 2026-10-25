@@ -8,11 +8,13 @@ class GcpSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     gcp_project_id: str
+    gcp_location: str = "us-central1"
 
 
 class IngestionSettings(GcpSettings):
     football_data_api_key: SecretStr
     gcs_raw_bucket: str
+    bq_raw_dataset: str = "raw"
 
 
 @cache

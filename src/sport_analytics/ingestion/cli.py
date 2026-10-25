@@ -1,11 +1,13 @@
 import argparse
 import logging
 from collections.abc import Sequence
-from datetime import date
+from datetime import UTC, date, datetime
 
 import requests
+from google.cloud import bigquery
 
 from sport_analytics.ingestion.extract import extract_football_data
+from sport_analytics.ingestion.loader import FOOTBALL_DATA_MATCHES, build_rows, load_partition
 from sport_analytics.ingestion.sources.football_data import FootballDataClient
 from sport_analytics.ingestion.storage import GcsStorage
 from sport_analytics.settings import get_ingestion_settings
@@ -23,6 +25,14 @@ def main(argv: Sequence[str] | None = None) -> None:
                     settings.football_data_api_key.get_secret_value(), session
                 )
                 extract_football_data(client, raw, args.competition, args.season, args.run_date)
+        case "load", "football-data":
+            rows = build_rows(raw, FOOTBALL_DATA_MATCHES, args.run_date, datetime.now(UTC))
+            warehouse = bigquery.Client(
+                project=settings.gcp_project_id, location=settings.gcp_location
+            )
+            load_partition(
+                warehouse, settings.bq_raw_dataset, FOOTBALL_DATA_MATCHES, args.run_date, rows
+            )
         case command:
             raise AssertionError(f"unhandled command {command}")
 
@@ -38,8 +48,16 @@ def _parser() -> argparse.ArgumentParser:
     football_data.add_argument(
         "--season", type=int, required=True, help="start year, such as 2026 for 2026/27"
     )
+    _add_run_date(football_data)
+
+    load = commands.add_parser("load", help="Load the files of a run from GCS into BigQuery.")
+    sources = load.add_subparsers(dest="source", required=True)
+    _add_run_date(sources.add_parser("football-data", help="Matches."))
+    return parser
+
+
+def _add_run_date(parser: argparse.ArgumentParser) -> None:
     # Required, never today: a rerun of a past day must write to the same place.
-    football_data.add_argument(
+    parser.add_argument(
         "--run-date", type=date.fromisoformat, required=True, help="such as 2026-10-25"
     )
-    return parser
