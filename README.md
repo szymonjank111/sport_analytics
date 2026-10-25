@@ -43,12 +43,39 @@ flowchart LR
 Only code is published. Raw data stays in a private cloud bucket and never enters this
 repository. Free xG data that may be redistributed does not exist for the Ekstraklasa, so
 the public app covers it with results-based models (Elo, Poisson), and xG for the top five
-leagues comes from Understat.
+leagues comes from Understat. The code is [MIT-licensed](LICENSE); the data belongs to its
+sources and is not covered by that license.
 
 ## Development
+
+You need [uv](https://docs.astral.sh/uv/), the
+[gcloud CLI](https://docs.cloud.google.com/sdk/docs/install), a free
+[football-data.org](https://www.football-data.org/client/register) API token and a Google
+Cloud project of your own: billing enabled, a GCS bucket and a BigQuery dataset `raw`, both
+in `us-central1`. Code authenticates with Application Default Credentials, so no service
+account keys are needed.
 
 ```bash
 uv sync
 uv run pre-commit install
+cp .env.example .env    # then fill in the values
+gcloud auth application-default login
+```
+
+Run the pipeline for a day. The run date decides where the data lands, so a rerun of the
+same day replaces it:
+
+```bash
+uv run ingest extract football-data --competition PL --season 2026 --run-date 2026-10-25
+uv run ingest load football-data --run-date 2026-10-25
+uv run --env-file .env dbt build
+uv run --env-file .env streamlit run app/streamlit_app.py
+```
+
+Run the checks, as CI does:
+
+```bash
 uv run pre-commit run --all-files
+uv run pyright
+uv run pytest
 ```
