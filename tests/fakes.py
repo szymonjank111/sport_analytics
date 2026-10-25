@@ -1,0 +1,62 @@
+from collections.abc import Mapping
+from pathlib import Path
+
+import requests
+from requests import PreparedRequest, Response
+from requests.adapters import BaseAdapter
+
+from sport_analytics.ingestion.sources.football_data import FootballDataClient
+
+PL_MATCHES = (Path(__file__).parent / "fixtures/football_data/matches_PL_2026.json").read_bytes()
+"""An answer of football-data.org for the 2026 Premier League, cut down to three matches."""
+
+
+class InMemoryStorage:
+    def __init__(self) -> None:
+        self.objects: dict[str, tuple[bytes, str]] = {}
+        """Data and content type by path."""
+
+    def write(self, path: str, data: bytes, content_type: str) -> None:
+        self.objects[path] = (data, content_type)
+
+    def uri(self, path: str) -> str:
+        return f"memory://{path}"
+
+
+class FakeAdapter(BaseAdapter):
+    """Answers each request with the next of the given responses and keeps the requests."""
+
+    def __init__(self, *responses: tuple[int, bytes]) -> None:
+        super().__init__()
+        self.responses = list(responses)
+        self.requests: list[PreparedRequest] = []
+
+    def send(
+        self,
+        request: PreparedRequest,
+        stream: bool = False,
+        timeout: float | tuple[float, float] | tuple[float, None] | None = None,
+        verify: bool | str = True,
+        cert: bytes | str | tuple[bytes | str, bytes | str] | None = None,
+        proxies: Mapping[str, str] | None = None,
+    ) -> Response:
+        self.requests.append(request)
+        status_code, body = self.responses.pop(0)
+        response = Response()
+        response.status_code = status_code
+        response._content = body  # pyright: ignore[reportPrivateUsage]  # It has no public setter.
+        response.request = request
+        return response
+
+    def close(self) -> None:
+        pass
+
+
+def session_with(adapter: FakeAdapter) -> requests.Session:
+    session = requests.Session()
+    session.mount("https://", adapter)
+    return session
+
+
+def football_data_client(adapter: FakeAdapter) -> FootballDataClient:
+    return FootballDataClient("secret", session_with(adapter))
