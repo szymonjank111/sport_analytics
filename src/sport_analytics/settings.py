@@ -21,3 +21,13 @@ class IngestionSettings(GcpSettings):
 def get_ingestion_settings() -> IngestionSettings:
     # Fields are read from the environment, which pyright cannot see.
     return IngestionSettings()  # pyright: ignore[reportCallIssue]
+
+
+class AppSettings(GcpSettings):
+    app_dataset: str
+
+
+@cache
+def get_app_settings() -> AppSettings:
+    # As above, the fields come from the environment.
+    return AppSettings()  # pyright: ignore[reportCallIssue]
