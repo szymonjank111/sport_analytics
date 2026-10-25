@@ -1,0 +1,29 @@
+# Ruff runs from uv.lock, so its version is pinned in one place only.
+repos:
+  - repo: local
+    hooks:
+      - id: no-private-files
+        name: block private files
+        language: fail
+        entry: "private/ and CLAUDE.md must never be committed"
+        files: (^private/|(^|/)CLAUDE\.md$)
+      - id: ruff-check
+        name: ruff check
+        language: system
+        entry: uv run ruff check --fix
+        types: [python]
+      - id: ruff-format
+        name: ruff format
+        language: system
+        entry: uv run ruff format
+        types: [python]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+      - id: detect-private-key
