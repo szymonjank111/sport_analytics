@@ -3,6 +3,8 @@ name = "sport-analytics"
 version = "0.1.0"
 description = "Football analytics ELT pipeline on BigQuery and dbt"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     { name = "Szymon Jankowski", email = "szymonjank99@gmail.com" }
 ]
