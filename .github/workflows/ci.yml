@@ -19,3 +19,28 @@ jobs:
       - run: uv run pre-commit run --all-files --show-diff-on-failure
       - run: uv run pyright
       - run: uv run pytest
+
+  dbt:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # The OIDC token that Workload Identity Federation trades for short-lived GCP credentials.
+      id-token: write
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      DBT_PROJECT_DIR: dbt
+      DBT_PROFILES_DIR: dbt
+      DBT_DATASET: ci_${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.2  # It publishes no major-version tag.
+      - id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_CI_SERVICE_ACCOUNT }}
+      - run: uv sync --locked
+      - run: uv run dbt deps
+      - run: uv run dbt build --target ci
+      - if: always() && steps.auth.outcome == 'success'
+        run: uv run python scripts/drop_ci_datasets.py "$DBT_DATASET"
