@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.2  # It publishes no major-version tag.
+      - run: uv sync --locked
+      # The hooks of a local commit, ruff among them, so CI checks no less than they do.
+      - run: uv run pre-commit run --all-files --show-diff-on-failure
+      - run: uv run pyright
+      - run: uv run pytest
