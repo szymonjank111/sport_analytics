@@ -30,9 +30,12 @@ class InMemoryStorage:
 
 
 class FakeAdapter(BaseAdapter):
-    """Answers each request with the next of the given responses and keeps the requests."""
+    """Answers each request with the next of the given responses and keeps the requests.
 
-    def __init__(self, *responses: tuple[int, bytes]) -> None:
+    A response may be an exception, which the request then raises, as for a network failure.
+    """
+
+    def __init__(self, *responses: tuple[int, bytes] | Exception) -> None:
         super().__init__()
         self.responses = list(responses)
         self.requests: list[PreparedRequest] = []
@@ -47,7 +50,10 @@ class FakeAdapter(BaseAdapter):
         proxies: Mapping[str, str] | None = None,
     ) -> Response:
         self.requests.append(request)
-        status_code, body = self.responses.pop(0)
+        answer = self.responses.pop(0)
+        if isinstance(answer, Exception):
+            raise answer
+        status_code, body = answer
         response = Response()
         response.status_code = status_code
         response._content = body  # pyright: ignore[reportPrivateUsage]  # It has no public setter.

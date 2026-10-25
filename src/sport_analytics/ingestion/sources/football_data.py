@@ -6,10 +6,9 @@ from pydantic import AliasChoices, AwareDatetime, BaseModel, ConfigDict, Field, 
 from pydantic.alias_generators import to_camel
 
 from sport_analytics.ingestion.errors import SourceError
+from sport_analytics.ingestion.http import TIMEOUT
 
 BASE_URL = "https://api.football-data.org/v4"
-TIMEOUT = (5, 30)
-"""Seconds to connect and to wait for each read."""
 
 
 class _Contract(BaseModel):
@@ -79,12 +78,20 @@ class FootballDataClient:
 
     def fetch_matches(self, competition: str, season: int) -> bytes:
         """The body as sent, which the raw layer keeps unchanged."""
-        response = self._session.get(
-            f"{BASE_URL}/competitions/{competition}/matches",
-            params={"season": season},
-            headers={"X-Auth-Token": self._api_key},
-            timeout=TIMEOUT,
-        )
+        try:
+            response = self._session.get(
+                f"{BASE_URL}/competitions/{competition}/matches",
+                params={"season": season},
+                headers={"X-Auth-Token": self._api_key},
+                timeout=TIMEOUT,
+            )
+        # Only what the source is to blame for; a bad header or URL is a fault of the setup.
+        except (
+            requests.ConnectionError,
+            requests.Timeout,
+            requests.exceptions.ChunkedEncodingError,
+        ) as error:
+            raise SourceError(f"football-data.org did not answer: {error}") from error
         if not response.ok:
             raise SourceError(
                 f"football-data.org answered {response.status_code}: {_error_message(response)}"

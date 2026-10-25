@@ -3,6 +3,7 @@ from collections.abc import Callable
 from typing import Any
 
 import pytest
+import requests
 
 from fakes import PL_MATCHES, FakeAdapter, football_data_client
 from sport_analytics.ingestion.errors import SourceError
@@ -109,3 +110,25 @@ def test_an_error_page_is_cut_short() -> None:
         client.fetch_matches("PL", 2026)
 
     assert len(str(error.value)) < 300
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        requests.ConnectionError("Name or service not known"),
+        requests.ReadTimeout("read"),
+        requests.exceptions.ChunkedEncodingError("Connection broken: IncompleteRead"),
+    ],
+)
+def test_a_source_out_of_reach_says_so(failure: requests.RequestException) -> None:
+    client = football_data_client(FakeAdapter(failure))
+
+    with pytest.raises(SourceError, match="did not answer"):
+        client.fetch_matches("PL", 2026)
+
+
+def test_a_fault_of_the_setup_keeps_its_traceback() -> None:
+    client = football_data_client(FakeAdapter(requests.exceptions.InvalidHeader("bad token")))
+
+    with pytest.raises(requests.exceptions.InvalidHeader):
+        client.fetch_matches("PL", 2026)
