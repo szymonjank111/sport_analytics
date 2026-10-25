@@ -44,3 +44,18 @@ jobs:
       - run: uv run dbt build --target ci
       - if: always() && steps.auth.outcome == 'success'
         run: uv run python scripts/drop_ci_datasets.py "$DBT_DATASET"
+
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.17.0
+      - run: terraform fmt -check -recursive
+      # Like uv sync --locked: fails instead of quietly changing the provider versions.
+      - run: terraform init -backend=false -lockfile=readonly
+      - run: terraform validate
