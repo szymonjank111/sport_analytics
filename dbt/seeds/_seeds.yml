@@ -1,0 +1,42 @@
+seeds:
+  - name: competitions
+    description: Competitions the project covers, with their codes in each source.
+    config:
+      column_types:
+        competition_id: string
+        name: string
+        country: string
+        tier: int64
+        season_calendar: string
+        football_data_code: string
+        co_uk_code: string
+        understat_code: string
+        has_xg: bool
+        has_match_stats: bool
+        has_odds: bool
+    columns:
+      - name: competition_id
+        description: Canonical competition ID, such as ENG1 for the top English league.
+        data_tests:
+          - unique
+          - not_null
+      - name: tier
+        description: Level in the national league pyramid, 1 for the top flight.
+      - name: season_calendar
+        description: split for seasons from autumn to spring, calendar for seasons within a year.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [split, calendar]
+      - name: football_data_code
+        description: Competition code in football-data.org.
+      - name: co_uk_code
+        description: Division code in football-data.co.uk.
+      - name: understat_code
+        description: League code in Understat.
+      - name: has_xg
+        description: Whether a source covers xG for the competition.
+      - name: has_match_stats
+        description: Whether a source covers shots, corners and cards.
+      - name: has_odds
+        description: Whether a source covers betting odds.

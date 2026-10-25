@@ -10,3 +10,8 @@ models:
     marts:
       +schema: marts_public
       +materialized: table
+
+seeds:
+  sport_analytics:
+    # Reference data enters like a source, so it shares the staging dataset.
+    +schema: staging

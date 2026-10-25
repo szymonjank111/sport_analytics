@@ -60,6 +60,7 @@ uv sync
 uv run pre-commit install
 cp .env.example .env    # then fill in the values
 gcloud auth application-default login
+uv run --env-file .env dbt deps
 ```
 
 Run the pipeline for a day. The run date decides where the data lands, so a rerun of the
