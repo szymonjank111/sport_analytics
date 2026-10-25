@@ -1,0 +1,10 @@
+sources:
+  - name: football_data
+    description: Season snapshots from the football-data.org API, one row per match and run.
+    schema: "{{ env_var('BQ_RAW_DATASET', 'raw') }}"
+    config:
+      meta:
+        redistribution: public
+    tables:
+      - name: matches
+        identifier: football_data__matches

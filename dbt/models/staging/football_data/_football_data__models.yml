@@ -1,0 +1,44 @@
+models:
+  - name: stg_football_data__matches
+    description: Matches from football-data.org, as of the latest run that fetched them.
+    columns:
+      - name: match_id
+        description: Match ID in football-data.org.
+        data_tests:
+          - unique
+          - not_null
+      - name: competition_code
+        description: Competition code in football-data.org, such as PL.
+      - name: season
+        description: Start year of the season, such as 2026 for 2026/27.
+      - name: status
+        description: Match status, lowercased.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values:
+                  - scheduled
+                  - timed
+                  - in_play
+                  - paused
+                  - extra_time
+                  - penalty_shootout
+                  - finished
+                  - suspended
+                  - postponed
+                  - cancelled
+                  - awarded
+      - name: kickoff_at
+        description: Kick-off time in UTC.
+      - name: home_team_key
+        description: Home team ID in football-data.org; null while a cup tie is undecided.
+      - name: away_team_key
+        description: Away team ID in football-data.org; null while a cup tie is undecided.
+      - name: home_goals
+        description: Full-time goals of the home team; null until the match is played.
+      - name: away_goals
+        description: Full-time goals of the away team; null until the match is played.
+      - name: last_updated_at
+        description: When football-data.org last changed the match.
+      - name: run_date
+        description: Date of the run whose snapshot the row comes from.

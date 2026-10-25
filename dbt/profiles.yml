@@ -1,0 +1,14 @@
+sport_analytics:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth
+      project: "{{ env_var('GCP_PROJECT_ID') }}"
+      dataset: "{{ env_var('DBT_DATASET') }}"
+      location: "{{ env_var('GCP_LOCATION', 'us-central1') }}"
+      threads: 4
+      priority: interactive
+      job_execution_timeout_seconds: 300
+      # A cost fuse: BigQuery refuses any query that would scan more than 1 GB.
+      maximum_bytes_billed: 1000000000

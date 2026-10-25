@@ -1,0 +1,10 @@
+models:
+  - name: fct_matches
+    description: One row per match, with its result once played.
+    columns:
+      - name: match_id
+        description: Match ID in football-data.org.
+        data_tests:
+          - unique
+      - name: match_date
+        description: Kick-off date in UTC.
