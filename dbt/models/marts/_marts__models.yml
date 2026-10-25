@@ -1,4 +1,49 @@
 models:
+  - name: dim_competitions
+    description: Competitions with what the sources cover for each of them.
+    columns:
+      - name: competition_id
+        description: Canonical competition ID, such as ENG1.
+        data_tests:
+          - unique
+          - not_null
+      - name: tier
+        description: Level in the national league pyramid, 1 for the top flight.
+      - name: season_calendar
+        description: split for seasons from autumn to spring, calendar for seasons within a year.
+      - name: has_xg
+        description: Whether a source covers xG for the competition.
+      - name: has_match_stats
+        description: Whether a source covers shots, corners and cards.
+      - name: has_odds
+        description: Whether a source covers betting odds.
+
+  - name: dim_teams
+    description: >
+      Clubs. There is no league column, since clubs move between leagues: the matches of a
+      season tell where a club plays.
+    columns:
+      - name: team_id
+        description: Slug of the club name, such as manchester-united.
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_dates
+    description: >
+      Calendar days from 2010 to 2030. Seasons and rounds depend on the league, so matches
+      carry them rather than the dates.
+    columns:
+      - name: date_day
+        description: The day.
+        data_tests:
+          - unique
+          - not_null
+      - name: iso_day_of_week
+        description: Day of the week from 1 for Monday to 7 for Sunday.
+      - name: day_name
+        description: English name of the day of the week.
+
   - name: fct_matches
     description: One row per match, with its result once played.
     columns:
