@@ -14,7 +14,9 @@ select
     date(matches.kickoff_at) as match_date,
     case
         when matches.status in ('scheduled', 'timed') then 'scheduled'
-        when matches.status in ('in_play', 'paused', 'extra_time', 'penalty_shootout') then 'in_play'
+        when
+            matches.status in ('in_play', 'paused', 'extra_time', 'penalty_shootout')
+            then 'in_play'
         else matches.status
     end as status,
     home_teams.team_id as home_team_id,

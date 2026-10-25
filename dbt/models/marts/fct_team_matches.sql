@@ -20,15 +20,15 @@ team_matches as (
     union all
     select
         match_key,
-        away_team_id,
-        home_team_id,
-        false,
+        away_team_id as team_id,
+        home_team_id as opponent_id,
+        false as is_home,
         competition_id,
         season,
         matchday,
         match_date,
-        away_goals,
-        home_goals
+        away_goals as goals_for,
+        home_goals as goals_against
     from played
 )
 

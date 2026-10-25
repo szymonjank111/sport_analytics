@@ -33,6 +33,7 @@ app = [
 dbt = [
     "dbt-bigquery>=1.12.1",
     "dbt-core>=1.12.6",
+    "sqlfluff>=4.4.0",
 ]
 dev = [
     "pandas-stubs>=3.0.5.260914",

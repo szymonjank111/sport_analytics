@@ -1,0 +1,22 @@
+[sqlfluff]
+dialect = bigquery
+# Templates without dbt itself, so linting needs neither a warehouse connection nor packages.
+templater = jinja
+max_line_length = 100
+# Columns go in the order of their meaning, keys first, not by the kind of expression.
+exclude_rules = structure.column_order
+
+[sqlfluff:templater:jinja]
+apply_dbt_builtins = True
+library_path = sqlfluff_libs
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.identifiers]
+# Only names we choose: JSON paths keep the camelCase of the source.
+unquoted_identifiers_policy = aliases
+
+[sqlfluff:rules:references.keywords]
+# Names BigQuery accepts: stage is a field of football-data.org, source names a data source.
+ignore_words = stage,source

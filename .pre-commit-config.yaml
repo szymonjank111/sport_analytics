@@ -1,4 +1,4 @@
-# Ruff runs from uv.lock, so its version is pinned in one place only.
+# Ruff and sqlfluff run from uv.lock, so their versions are pinned in one place only.
 repos:
   - repo: local
     hooks:
@@ -17,6 +17,11 @@ repos:
         language: system
         entry: uv run ruff format
         types: [python]
+      - id: sqlfluff-lint
+        name: sqlfluff lint
+        language: system
+        entry: uv run sqlfluff lint
+        files: ^dbt/(models|tests|macros)/.*\.sql$
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
