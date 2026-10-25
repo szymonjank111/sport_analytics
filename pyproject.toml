@@ -49,13 +49,14 @@ default-groups = ["dev", "dbt", "app"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-src = ["src", "tests"]
+src = ["src", "tests", "scripts"]
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "UP", "B", "SIM", "C4", "PT", "DTZ", "RUF"]
 
 [tool.pyright]
-include = ["src", "tests", "app"]
+include = ["src", "tests", "app", "scripts"]
+extraPaths = ["src", "scripts"]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
 venvPath = "."
@@ -64,5 +65,6 @@ venv = ".venv"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = ["-ra", "--strict-markers", "--import-mode=importlib"]
-# For the fakes the tests share, which importlib mode does not put on the path.
-pythonpath = ["tests"]
+# For the fakes the tests share and the scripts they test, which importlib mode does not put on
+# the path.
+pythonpath = ["tests", "scripts"]

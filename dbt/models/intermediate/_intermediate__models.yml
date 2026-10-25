@@ -1,0 +1,14 @@
+models:
+  - name: int_unmapped_teams
+    description: >
+      Teams of the sources without a canonical team in the team_mapping seed. It should be
+      empty; scripts/propose_team_mapping.py turns its rows into seed rows to review.
+    columns:
+      - name: source
+        description: Source of the team, such as football_data.
+      - name: team_key
+        description: Team ID in the source, as text.
+      - name: team_name
+        description: Team name in the source.
+      - name: country
+        description: Country of the competition the team plays in.

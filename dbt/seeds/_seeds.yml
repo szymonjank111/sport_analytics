@@ -40,3 +40,42 @@ seeds:
         description: Whether a source covers shots, corners and cards.
       - name: has_odds
         description: Whether a source covers betting odds.
+
+  - name: teams
+    description: Canonical clubs, whatever their name in each source.
+    columns:
+      - name: team_id
+        description: Slug of the club name, such as manchester-united.
+        data_tests:
+          - unique
+          - not_null
+      - name: name
+        description: Club name without affixes such as FC.
+      - name: country
+        description: Country of the club.
+
+  - name: team_mapping
+    description: The canonical club of each team key in each source.
+    config:
+      column_types:
+        source: string
+        # Text, like the keys in staging: IDs of one source and names of another share it.
+        source_team_key: string
+        team_id: string
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [source, source_team_key]
+    columns:
+      - name: source
+        description: Source of the key, such as football_data.
+      - name: source_team_key
+        description: Team ID or name in the source.
+      - name: team_id
+        description: Canonical club.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('teams')
+                field: team_id
