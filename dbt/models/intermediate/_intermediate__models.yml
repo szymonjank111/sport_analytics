@@ -12,3 +12,8 @@ models:
         description: Team name in the source.
       - name: country
         description: Country of the competition the team plays in.
+
+  - name: int_matches__football_data
+    description: >
+      Matches from football-data.org with canonical competitions and teams, and statuses
+      reduced to scheduled, in_play, finished, suspended, postponed, cancelled and awarded.

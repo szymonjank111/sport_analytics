@@ -9,6 +9,12 @@ models:
           - not_null
       - name: competition_code
         description: Competition code in football-data.org, such as PL.
+        data_tests:
+          # Matches of a competition missing from the seed would silently drop out of the marts.
+          - relationships:
+              arguments:
+                to: ref('competitions')
+                field: football_data_code
       - name: season
         description: Start year of the season, such as 2026 for 2026/27.
       - name: status

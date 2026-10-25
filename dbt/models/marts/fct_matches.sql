@@ -1,13 +1,22 @@
 select
-    match_id,
-    competition_code,
+    {{ dbt_utils.generate_surrogate_key(
+        ['competition_id', 'season', 'home_team_id', 'away_team_id']
+    ) }} as match_key,
+    competition_id,
     season,
     matchday,
     kickoff_at,
-    date(kickoff_at) as match_date,
+    match_date,
     status,
-    home_team_name,
-    away_team_name,
+    home_team_id,
+    away_team_id,
     home_goals,
-    away_goals
-from {{ ref('stg_football_data__matches') }}
+    away_goals,
+    case
+        when status not in ('finished', 'awarded') then null
+        when home_goals > away_goals then 'H'
+        when home_goals < away_goals then 'A'
+        else 'D'
+    end as result,
+    football_data_match_id
+from {{ ref('int_matches__football_data') }}

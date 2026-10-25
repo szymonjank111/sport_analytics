@@ -14,10 +14,14 @@ def load_matches() -> pd.DataFrame:
     settings = get_app_settings()
     client = bigquery.Client(project=settings.gcp_project_id, location=settings.gcp_location)
     # A table name cannot be a query parameter; this one comes from trusted settings.
+    dataset = f"{settings.gcp_project_id}.{settings.app_dataset}"
     query = f"""
-        select season, matchday, kickoff_at, match_date, status,
-            home_team_name, away_team_name, home_goals, away_goals
-        from `{settings.gcp_project_id}.{settings.app_dataset}.fct_matches`
+        select matches.season, matches.matchday, matches.kickoff_at, matches.match_date,
+            matches.status, home.name as home_team_name, away.name as away_team_name,
+            matches.home_goals, matches.away_goals
+        from `{dataset}.fct_matches` as matches
+        join `{dataset}.dim_teams` as home on matches.home_team_id = home.team_id
+        join `{dataset}.dim_teams` as away on matches.away_team_id = away.team_id
     """
     # BigQuery imports pandas as an optional dependency, which pyright cannot resolve.
     return cast(pd.DataFrame, client.query(query).to_dataframe())  # pyright: ignore[reportUnknownMemberType]

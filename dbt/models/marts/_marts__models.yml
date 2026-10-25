@@ -46,10 +46,113 @@ models:
 
   - name: fct_matches
     description: One row per match, with its result once played.
+    data_tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: home_goals >= 0 and away_goals >= 0
     columns:
-      - name: match_id
+      - name: match_key
+        description: >
+          Hash of competition, season and teams: in a league each pair meets at home once a
+          season, so the key holds whatever the source or the kick-off date.
+        data_tests:
+          - unique
+          - not_null
+      - name: competition_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_competitions')
+                field: competition_id
+      - name: season
+        description: Start year of the season, such as 2026 for 2026/27.
+      - name: match_date
+        description: Kick-off date in UTC.
+      - name: status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [scheduled, in_play, finished, suspended, postponed, cancelled, awarded]
+      - name: home_team_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_teams')
+                field: team_id
+      - name: away_team_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_teams')
+                field: team_id
+      - name: result
+        description: H, D or A once the match is finished or awarded, otherwise null.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [H, D, A]
+      - name: football_data_match_id
         description: Match ID in football-data.org.
         data_tests:
           - unique
-      - name: match_date
-        description: Kick-off date in UTC.
+
+  - name: fct_team_matches
+    description: >
+      Two rows per played match, one from the side of each team, so that form and home or
+      away splits need no case on the side.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [match_key, team_id]
+    columns:
+      - name: match_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fct_matches')
+                field: match_key
+      - name: team_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_teams')
+                field: team_id
+      - name: opponent_id
+        data_tests:
+          - not_null
+      - name: result
+        description: W, D or L for the team.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [W, D, L]
+      - name: points
+        description: 3 for a win, 1 for a draw, 0 for a loss.
+
+  - name: fct_standings
+    description: >
+      The league table after each round. Ties are broken by goal difference and then goals
+      scored only, with no head-to-head rules or points deductions, and a postponed match
+      counts towards its original round.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [competition_id, season, matchday, team_id]
+    columns:
+      - name: matchday
+        description: The round after which the table stands.
+      - name: team_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_teams')
+                field: team_id
+      - name: position
+        description: Rank in the table; teams level on every criterion share it.
+        data_tests:
+          - not_null
