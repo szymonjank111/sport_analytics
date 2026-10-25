@@ -1,9 +1,10 @@
 select
     {{ dbt_utils.generate_surrogate_key(
-        ['competition_id', 'season', 'home_team_id', 'away_team_id']
+        ['competition_id', 'season', 'stage', 'home_team_id', 'away_team_id']
     ) }} as match_key,
     competition_id,
     season,
+    stage,
     matchday,
     kickoff_at,
     match_date,

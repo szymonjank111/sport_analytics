@@ -11,8 +11,11 @@ from sport_analytics.ingestion.loader import RawEntity
 from sport_analytics.ingestion.rate_limit import RateLimiter
 from sport_analytics.ingestion.sources.football_data import FootballDataClient
 
-PL_MATCHES = (Path(__file__).parent / "fixtures/football_data/matches_PL_2026.json").read_bytes()
+FIXTURES = Path(__file__).parent / "fixtures"
+PL_MATCHES = (FIXTURES / "football_data/matches_PL_2026.json").read_bytes()
 """An answer of football-data.org for the 2026 Premier League, cut down to three matches."""
+CL_MATCHES = (FIXTURES / "football_data/matches_CL_2026.json").read_bytes()
+"""The same for the Champions League: the league stage, a knockout tie and the final."""
 
 
 class InMemoryStorage:
@@ -45,10 +48,13 @@ class FakeWarehouse:
 class FakeAdapter(BaseAdapter):
     """Answers each request with the next of the given responses and keeps the requests.
 
-    A response may be an exception, which the request then raises, as for a network failure.
+    A response is a status and a body, with headers or without, or an exception, which the
+    request then raises, as for a network failure.
     """
 
-    def __init__(self, *responses: tuple[int, bytes] | Exception) -> None:
+    def __init__(
+        self, *responses: tuple[int, bytes] | tuple[int, bytes, dict[str, str]] | Exception
+    ) -> None:
         super().__init__()
         self.responses = list(responses)
         self.requests: list[PreparedRequest] = []
@@ -66,9 +72,11 @@ class FakeAdapter(BaseAdapter):
         answer = self.responses.pop(0)
         if isinstance(answer, Exception):
             raise answer
-        status_code, body = answer
+        status_code, body, *headers = answer
         response = Response()
         response.status_code = status_code
+        for header in headers:
+            response.headers.update(header)
         response._content = body  # pyright: ignore[reportPrivateUsage]  # It has no public setter.
         response.request = request
         return response

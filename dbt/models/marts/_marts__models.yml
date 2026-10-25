@@ -12,10 +12,16 @@ models:
       - name: name
         data_type: string
       - name: country
+        description: Country of a national league; null for an international cup.
         data_type: string
       - name: tier
         description: Level in the national league pyramid, 1 for the top flight.
         data_type: int64
+      - name: competition_type
+        description: league for a round robin, cup for knockout ties.
+        data_type: string
+        constraints:
+          - type: not_null
       - name: season_calendar
         description: split for seasons from autumn to spring, calendar for seasons within a year.
         data_type: string
@@ -80,8 +86,9 @@ models:
     columns:
       - name: match_key
         description: >
-          Hash of competition, season and teams: in a league each pair meets at home once a
-          season, so the key holds whatever the source or the kick-off date.
+          Hash of competition, season, cup stage and teams: in a league each pair meets at home
+          once a season, and in a cup once a stage, so the key holds whatever the source or the
+          kick-off date.
         data_type: string
         constraints:
           - type: not_null
@@ -101,8 +108,11 @@ models:
         data_type: int64
         constraints:
           - type: not_null
+      - name: stage
+        description: Stage of a cup, such as league_stage or final; null in a league.
+        data_type: string
       - name: matchday
-        description: Round of the league.
+        description: Round of a league or of the league stage of a cup; null in knockout rounds.
         data_type: int64
       - name: kickoff_at
         data_type: timestamp
@@ -232,9 +242,9 @@ models:
 
   - name: fct_standings
     description: >
-      The league table after each round. Ties are broken by goal difference and then goals
-      scored only, with no head-to-head rules or points deductions, and a postponed match
-      counts towards its original round.
+      The league table of each league after each round. Ties are broken by goal difference and
+      then goals scored only, with no head-to-head rules or points deductions, and a postponed
+      match counts towards its original round.
     data_tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:

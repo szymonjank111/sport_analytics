@@ -16,7 +16,13 @@ from sport_analytics.ingestion.loader import (
     build_rows,
 )
 from sport_analytics.ingestion.rate_limit import RateLimiter
-from sport_analytics.ingestion.sources.football_data import MIN_INTERVAL, FootballDataClient
+from sport_analytics.ingestion.seasons import current_season
+from sport_analytics.ingestion.sources.football_data import (
+    CALENDAR_YEAR,
+    COMPETITIONS,
+    MIN_INTERVAL,
+    FootballDataClient,
+)
 from sport_analytics.ingestion.storage import GcsStorage, Storage
 from sport_analytics.settings import get_ingestion_settings
 
@@ -56,9 +62,13 @@ def run(args: argparse.Namespace, deps: Deps) -> None:
     try:
         match args.command, args.source:
             case "extract", "football-data":
-                extract_football_data(
-                    deps.football_data, deps.storage, args.competition, args.season, args.run_date
-                )
+                for competition in args.competition or COMPETITIONS:
+                    season = args.season or current_season(
+                        args.run_date, competition in CALENDAR_YEAR
+                    )
+                    extract_football_data(
+                        deps.football_data, deps.storage, competition, season, args.run_date
+                    )
             case "load", "football-data":
                 loaded_at = datetime.now(UTC)
                 rows = build_rows(deps.storage, FOOTBALL_DATA_MATCHES, args.run_date, loaded_at)
@@ -82,10 +92,19 @@ def _parser() -> argparse.ArgumentParser:
 
     extract = commands.add_parser("extract", help="Fetch from a source and store it in GCS.")
     sources = extract.add_subparsers(dest="source", required=True)
-    football_data = sources.add_parser("football-data", help="Matches of a competition season.")
-    football_data.add_argument("--competition", required=True, help="native code, such as PL")
+    football_data = sources.add_parser("football-data", help="Matches of competition seasons.")
+    # One run fetches every competition, since the rate limiter only spaces the requests of one
+    # process.
     football_data.add_argument(
-        "--season", type=int, required=True, help="start year, such as 2026 for 2026/27"
+        "--competition",
+        action="append",
+        choices=COMPETITIONS,
+        help="native code, such as PL; repeat it for more; all of them by default",
+    )
+    football_data.add_argument(
+        "--season",
+        type=int,
+        help="start year, such as 2026 for 2026/27; the current one by default",
     )
     _add_run_date(football_data)
 

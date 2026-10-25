@@ -9,6 +9,8 @@ with team_mapping as (
 select
     competitions.competition_id,
     matches.season,
+    -- Teams meet again in a later stage of a cup, so the stage tells the matches apart.
+    if(competitions.competition_type = 'cup', lower(matches.stage), null) as stage,
     matches.matchday,
     matches.kickoff_at,
     date(matches.kickoff_at) as match_date,

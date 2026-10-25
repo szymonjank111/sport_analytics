@@ -1,15 +1,24 @@
-with season_teams as (
+with league_matches as (
+    select matches.*
+    from {{ ref('fct_matches') }} as matches
+    inner join {{ ref('dim_competitions') }} as competitions
+        on matches.competition_id = competitions.competition_id
+    where competitions.competition_type = 'league'
+),
+
+-- The teams of league seasons only, which also keeps the rounds of cups out of the grid below.
+season_teams as (
     select
         competition_id,
         season,
         home_team_id as team_id
-    from {{ ref('fct_matches') }}
+    from league_matches
     union distinct
     select
         competition_id,
         season,
         away_team_id
-    from {{ ref('fct_matches') }}
+    from league_matches
 ),
 
 played_matchdays as (

@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 import requests
 
-from fakes import PL_MATCHES, FakeAdapter, FakeClock, football_data_client
+from fakes import CL_MATCHES, PL_MATCHES, FakeAdapter, FakeClock, football_data_client
 from sport_analytics.ingestion.errors import SourceError
 from sport_analytics.ingestion.rate_limit import RateLimiter
 from sport_analytics.ingestion.sources.football_data import MIN_INTERVAL, parse_matches
@@ -41,6 +41,14 @@ def test_parses_matches_as_sent() -> None:
 
     assert [match["status"] for match in matches] == ["FINISHED", "POSTPONED", "TIMED"]
     assert matches[0]["score"]["fullTime"] == {"home": 2, "away": 1}
+
+
+def test_parses_cup_matches_with_ties_still_to_be_decided() -> None:
+    matches = parse_matches(CL_MATCHES)
+
+    assert [match["stage"] for match in matches] == ["LEAGUE_STAGE", "PLAYOFFS", "FINAL"]
+    assert [match["matchday"] for match in matches] == [1, None, None]
+    assert matches[2]["homeTeam"]["id"] is None
 
 
 @pytest.mark.parametrize(
@@ -100,8 +108,18 @@ def test_asks_for_the_season_with_the_token() -> None:
 def test_an_error_answer_says_why(body: bytes, message: str) -> None:
     client = football_data_client(FakeAdapter((403, body)))
 
-    with pytest.raises(SourceError, match=f"answered 403: .*{message}"):
+    with pytest.raises(SourceError, match=f"answered 403 for PL 2020: .*{message}"):
         client.fetch_matches("PL", 2020)
+
+
+def test_a_spent_quota_says_when_it_comes_back() -> None:
+    answer = b'{"message": "You reached your request limit. Wait 42 seconds.", "errorCode": 429}'
+    client = football_data_client(FakeAdapter((429, answer, {"X-RequestCounter-Reset": "42"})))
+
+    with pytest.raises(
+        SourceError, match=r"answered 429 for PL 2026: .* \(the quota resets in 42 s\)$"
+    ):
+        client.fetch_matches("PL", 2026)
 
 
 def test_an_error_page_is_cut_short() -> None:
@@ -124,7 +142,7 @@ def test_an_error_page_is_cut_short() -> None:
 def test_a_source_out_of_reach_says_so(failure: requests.RequestException) -> None:
     client = football_data_client(FakeAdapter(failure))
 
-    with pytest.raises(SourceError, match="did not answer"):
+    with pytest.raises(SourceError, match="did not answer for PL 2026"):
         client.fetch_matches("PL", 2026)
 
 

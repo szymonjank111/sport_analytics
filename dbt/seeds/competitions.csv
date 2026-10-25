@@ -1,2 +1,12 @@
-competition_id,name,country,tier,season_calendar,football_data_code,co_uk_code,understat_code,has_xg,has_match_stats,has_odds
-ENG1,Premier League,England,1,split,PL,E0,EPL,true,true,true
+competition_id,name,country,tier,competition_type,season_calendar,football_data_code,co_uk_code,understat_code,has_xg,has_match_stats,has_odds
+BRA1,Campeonato Brasileiro Série A,Brazil,1,league,calendar,BSA,BRA,,false,false,true
+ENG1,Premier League,England,1,league,split,PL,E0,EPL,true,true,true
+ENG2,Championship,England,2,league,split,ELC,E1,,false,true,true
+ESP1,La Liga,Spain,1,league,split,PD,SP1,La_liga,true,true,true
+FRA1,Ligue 1,France,1,league,split,FL1,F1,Ligue_1,true,true,true
+GER1,Bundesliga,Germany,1,league,split,BL1,D1,Bundesliga,true,true,true
+ITA1,Serie A,Italy,1,league,split,SA,I1,Serie_A,true,true,true
+NED1,Eredivisie,Netherlands,1,league,split,DED,N1,,false,true,true
+POL1,Ekstraklasa,Poland,1,league,split,,POL,,false,false,true
+POR1,Primeira Liga,Portugal,1,league,split,PPL,P1,,false,true,true
+UCL,UEFA Champions League,,,cup,split,CL,,,false,false,false

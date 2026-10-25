@@ -18,18 +18,26 @@ unit_tests:
     model: fct_standings
     description: >
       Arsenal beats Brentford 2-0 while Chelsea rests, then Chelsea beats Brentford 3-0 while
-      Arsenal rests: level on points, Chelsea goes top on goal difference.
+      Arsenal rests: level on points, Chelsea goes top on goal difference. Arsenal's cup match
+      stays out of the table.
     given:
+      - input: ref('dim_competitions')
+        rows:
+          - {competition_id: ENG1, competition_type: league}
+          - {competition_id: UCL, competition_type: cup}
       - input: ref('fct_matches')
         rows:
           - {competition_id: ENG1, season: 2026, home_team_id: arsenal, away_team_id: brentford}
           - {competition_id: ENG1, season: 2026, home_team_id: chelsea, away_team_id: brentford}
+          - {competition_id: UCL, season: 2026, home_team_id: arsenal, away_team_id: real-madrid}
       - input: ref('fct_team_matches')
         rows:
           - {match_key: m1, competition_id: ENG1, season: 2026, matchday: 1, team_id: arsenal, goals_for: 2, goals_against: 0, result: W, points: 3}
           - {match_key: m1, competition_id: ENG1, season: 2026, matchday: 1, team_id: brentford, goals_for: 0, goals_against: 2, result: L, points: 0}
           - {match_key: m2, competition_id: ENG1, season: 2026, matchday: 2, team_id: chelsea, goals_for: 3, goals_against: 0, result: W, points: 3}
           - {match_key: m2, competition_id: ENG1, season: 2026, matchday: 2, team_id: brentford, goals_for: 0, goals_against: 3, result: L, points: 0}
+          - {match_key: m3, competition_id: UCL, season: 2026, matchday: 1, team_id: arsenal, goals_for: 1, goals_against: 0, result: W, points: 3}
+          - {match_key: m3, competition_id: UCL, season: 2026, matchday: 1, team_id: real-madrid, goals_for: 0, goals_against: 1, result: L, points: 0}
     expect:
       rows:
         - {matchday: 1, team_id: arsenal, played: 1, wins: 1, losses: 0, goal_difference: 2, points: 3, position: 1}

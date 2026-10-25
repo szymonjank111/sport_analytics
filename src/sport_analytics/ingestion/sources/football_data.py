@@ -10,6 +10,10 @@ from sport_analytics.ingestion.http import TIMEOUT
 from sport_analytics.ingestion.rate_limit import RateLimiter
 
 BASE_URL = "https://api.football-data.org/v4"
+COMPETITIONS = ("PL", "ELC", "PD", "BL1", "SA", "FL1", "DED", "PPL", "BSA", "CL")
+"""The free plan's competitions without the EURO and the World Cup, which are not club football."""
+CALENDAR_YEAR = frozenset({"BSA"})
+"""Competitions whose season runs within a calendar year."""
 MIN_INTERVAL = 6.5
 """Seconds between requests: the free plan allows 10 a minute, and this leaves a margin."""
 
@@ -96,10 +100,17 @@ class FootballDataClient:
             requests.Timeout,
             requests.exceptions.ChunkedEncodingError,
         ) as error:
-            raise SourceError(f"football-data.org did not answer: {error}") from error
-        if not response.ok:
             raise SourceError(
-                f"football-data.org answered {response.status_code}: {_error_message(response)}"
+                f"football-data.org did not answer for {competition} {season}: {error}"
+            ) from error
+        if not response.ok:
+            reason = _error_message(response)
+            reset = response.headers.get("X-RequestCounter-Reset")
+            if response.status_code == 429 and reset is not None:
+                reason += f" (the quota resets in {reset} s)"
+            status = response.status_code
+            raise SourceError(
+                f"football-data.org answered {status} for {competition} {season}: {reason}"
             )
         return response.content
 

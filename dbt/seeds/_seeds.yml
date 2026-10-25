@@ -7,6 +7,7 @@ seeds:
         name: string
         country: string
         tier: int64
+        competition_type: string
         season_calendar: string
         football_data_code: string
         co_uk_code: string
@@ -20,8 +21,16 @@ seeds:
         data_tests:
           - unique
           - not_null
+      - name: country
+        description: Country of a national league; null for an international cup.
       - name: tier
         description: Level in the national league pyramid, 1 for the top flight.
+      - name: competition_type
+        description: league for a round robin, cup for knockout ties.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [league, cup]
       - name: season_calendar
         description: split for seasons from autumn to spring, calendar for seasons within a year.
         data_tests:

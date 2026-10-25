@@ -67,7 +67,7 @@ Run the pipeline for a day. The run date decides where the data lands, so a reru
 same day replaces it:
 
 ```bash
-uv run ingest extract football-data --competition PL --season 2026 --run-date 2026-10-25
+uv run ingest extract football-data --run-date 2026-10-25    # every competition, this season
 uv run ingest load football-data --run-date 2026-10-25
 uv run --env-file .env dbt build
 uv run --env-file .env streamlit run app/streamlit_app.py
