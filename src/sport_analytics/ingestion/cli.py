@@ -7,11 +7,17 @@ from datetime import UTC, date, datetime
 from google.cloud import bigquery
 
 from sport_analytics.ingestion.errors import NothingToLoadError, SourceError
-from sport_analytics.ingestion.extract import extract_football_data, extract_football_data_co_uk
+from sport_analytics.ingestion.extract import (
+    extract_football_data,
+    extract_football_data_co_uk,
+    extract_understat,
+)
 from sport_analytics.ingestion.http import build_session
 from sport_analytics.ingestion.loader import (
     FOOTBALL_DATA_CO_UK_MATCHES,
     FOOTBALL_DATA_MATCHES,
+    UNDERSTAT_LEAGUE_MATCHES,
+    UNDERSTAT_MATCH_PLAYERS,
     BigQueryWarehouse,
     RawEntity,
     Warehouse,
@@ -33,6 +39,8 @@ from sport_analytics.ingestion.sources.football_data_co_uk import (
 from sport_analytics.ingestion.sources.football_data_co_uk import (
     MIN_INTERVAL as CO_UK_MIN_INTERVAL,
 )
+from sport_analytics.ingestion.sources.understat import LEAGUES, UnderstatClient
+from sport_analytics.ingestion.sources.understat import MIN_INTERVAL as UNDERSTAT_MIN_INTERVAL
 from sport_analytics.ingestion.storage import GcsStorage, Storage
 from sport_analytics.settings import get_ingestion_settings
 
@@ -44,6 +52,7 @@ class Deps:
     storage: Storage
     football_data: FootballDataClient
     football_data_co_uk: FootballDataCoUkClient
+    understat: UnderstatClient
     warehouse: Warehouse
 
 
@@ -61,6 +70,7 @@ def main(argv: Sequence[str] | None = None) -> None:
                 RateLimiter(MIN_INTERVAL),
             ),
             football_data_co_uk=FootballDataCoUkClient(session, RateLimiter(CO_UK_MIN_INTERVAL)),
+            understat=UnderstatClient(session, RateLimiter(UNDERSTAT_MIN_INTERVAL)),
             warehouse=BigQueryWarehouse(
                 bigquery.Client(project=settings.gcp_project_id, location=settings.gcp_location),
                 settings.bq_raw_dataset,
@@ -86,13 +96,32 @@ def run(args: argparse.Namespace, deps: Deps) -> None:
                     deps.football_data_co_uk,
                     deps.storage,
                     args.competition or (*DIVISIONS, *EXTRA_LEAGUES),
-                    _co_uk_seasons(args),
+                    _seasons(args),
+                    args.run_date,
+                )
+            case "extract", "understat":
+                extract_understat(
+                    deps.understat,
+                    deps.storage,
+                    args.competition or LEAGUES,
+                    _seasons(args),
                     args.run_date,
                 )
             case "load", "football-data":
                 _load(deps, FOOTBALL_DATA_MATCHES, args.run_date)
             case "load", "football-data-co-uk":
                 _load(deps, FOOTBALL_DATA_CO_UK_MATCHES, args.run_date)
+            case "load", "understat":
+                _load(deps, UNDERSTAT_LEAGUE_MATCHES, args.run_date)
+                try:
+                    _load(deps, UNDERSTAT_MATCH_PLAYERS, args.run_date)
+                except NothingToLoadError:
+                    # Rosters are fetched once, after the match, so a run may have none.
+                    logger.info(
+                        "skipped table=%s run_date=%s reason=no_new_matches",
+                        UNDERSTAT_MATCH_PLAYERS.table,
+                        args.run_date,
+                    )
             case command:
                 raise AssertionError(f"unhandled command {command}")
     except (SourceError, NothingToLoadError) as error:
@@ -102,7 +131,7 @@ def run(args: argparse.Namespace, deps: Deps) -> None:
         raise SystemExit(1) from None
 
 
-def _co_uk_seasons(args: argparse.Namespace) -> list[int]:
+def _seasons(args: argparse.Namespace) -> list[int]:
     current = current_season(args.run_date)
     history = range(args.history_from, current + 1) if args.history_from else ()
     return sorted({*(args.season or ()), *history}) or [current]
@@ -160,10 +189,33 @@ def _parser() -> argparse.ArgumentParser:
     )
     _add_run_date(co_uk)
 
+    understat = sources.add_parser(
+        "understat", help="Matches of league seasons with xG, and the rosters of those played."
+    )
+    understat.add_argument(
+        "--competition",
+        action="append",
+        choices=LEAGUES,
+        help="league code, such as EPL; repeat it for more; all of them by default",
+    )
+    understat.add_argument(
+        "--season",
+        type=int,
+        action="append",
+        help="start year, such as 2026 for 2026/27; repeat it for more; the current one by default",
+    )
+    understat.add_argument(
+        "--history-from", type=int, help="start year of the first season to fetch, up to now"
+    )
+    _add_run_date(understat)
+
     load = commands.add_parser("load", help="Load the files of a run from GCS into BigQuery.")
     sources = load.add_subparsers(dest="source", required=True)
     _add_run_date(sources.add_parser("football-data", help="Matches."))
     _add_run_date(sources.add_parser("football-data-co-uk", help="Matches."))
+    _add_run_date(
+        sources.add_parser("understat", help="Matches, and the rosters of the matches played.")
+    )
     return parser
 
 

@@ -4,16 +4,23 @@ import pytest
 
 from fakes import (
     E0_SEASON,
+    EPL_SEASON,
+    MATCH_ROSTERS,
     PL_MATCHES,
     POL_SEASONS,
     FakeAdapter,
     InMemoryStorage,
     football_data_client,
     football_data_co_uk_client,
+    understat_client,
 )
 from sport_analytics.ingestion.errors import SourceError
-from sport_analytics.ingestion.extract import extract_football_data, extract_football_data_co_uk
-from sport_analytics.ingestion.paths import RawObject
+from sport_analytics.ingestion.extract import (
+    extract_football_data,
+    extract_football_data_co_uk,
+    extract_understat,
+)
+from sport_analytics.ingestion.paths import RawObject, parse_raw_path
 
 RUN_DATE = date(2026, 10, 25)
 PATH = "raw/source=football_data/run_date=2026-10-25/competition=PL/season=2026/matches.json"
@@ -89,3 +96,61 @@ def test_stores_nothing_from_a_file_that_breaks_the_contract() -> None:
         )
 
     assert storage.objects == {}
+
+
+def test_fetches_a_league_season_and_the_rosters_of_the_matches_played() -> None:
+    adapter = FakeAdapter((200, EPL_SEASON), (200, MATCH_ROSTERS), (200, MATCH_ROSTERS))
+    storage = InMemoryStorage()
+
+    extract_understat(understat_client(adapter), storage, ["EPL"], [2026], RUN_DATE)
+
+    prefix = "raw_private/source=understat/run_date=2026-10-25/competition=EPL/season=2026"
+    assert sorted(storage.objects) == [
+        f"{prefix}/league_matches.json",
+        f"{prefix}/match=90001/match_players.json",
+        f"{prefix}/match=90002/match_players.json",
+    ]
+    assert storage.objects[f"{prefix}/match=90001/match_players.json"][0] == MATCH_ROSTERS
+
+
+def test_fetches_the_rosters_of_a_match_only_once() -> None:
+    storage = InMemoryStorage()
+    earlier = RawObject("understat", date(2026, 10, 1), "EPL", 2026, "match_players", "json", 90001)
+    storage.write(earlier.path, MATCH_ROSTERS, "application/json")
+    adapter = FakeAdapter((200, EPL_SEASON), (200, MATCH_ROSTERS))
+
+    extracted = extract_understat(understat_client(adapter), storage, ["EPL"], [2026], RUN_DATE)
+
+    assert [(raw.entity, raw.match_id) for raw in extracted] == [
+        ("league_matches", None),
+        ("match_players", 90002),
+    ]
+
+
+def test_a_finished_season_comes_from_storage_with_the_rosters_still_to_fetch() -> None:
+    storage = InMemoryStorage()
+    season = RawObject("understat", date(2026, 5, 1), "EPL", 2025, "league_matches", "json")
+    storage.write(season.path, EPL_SEASON, "application/json")
+    rosters = RawObject("understat", date(2026, 5, 1), "EPL", 2025, "match_players", "json", 90001)
+    storage.write(rosters.path, MATCH_ROSTERS, "application/json")
+    adapter = FakeAdapter((200, MATCH_ROSTERS))
+
+    extracted = extract_understat(understat_client(adapter), storage, ["EPL"], [2025], RUN_DATE)
+
+    assert [(raw.season, raw.match_id) for raw in extracted] == [(2025, 90002)]
+    assert [request.url for request in adapter.requests] == [
+        "https://understat.com/getMatchData/90002"
+    ]
+
+
+def test_keeps_the_rosters_fetched_before_a_failure() -> None:
+    adapter = FakeAdapter((200, EPL_SEASON), (200, MATCH_ROSTERS), (200, b"{}"))
+    storage = InMemoryStorage()
+
+    with pytest.raises(SourceError, match="match_players contract"):
+        extract_understat(understat_client(adapter), storage, ["EPL"], [2026], RUN_DATE)
+
+    assert [(raw.entity, raw.match_id) for raw in map(parse_raw_path, storage.objects)] == [
+        ("league_matches", None),
+        ("match_players", 90001),
+    ]

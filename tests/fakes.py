@@ -11,6 +11,7 @@ from sport_analytics.ingestion.loader import RawEntity
 from sport_analytics.ingestion.rate_limit import RateLimiter
 from sport_analytics.ingestion.sources.football_data import FootballDataClient
 from sport_analytics.ingestion.sources.football_data_co_uk import FootballDataCoUkClient
+from sport_analytics.ingestion.sources.understat import UnderstatClient
 
 FIXTURES = Path(__file__).parent / "fixtures"
 PL_MATCHES = (FIXTURES / "football_data/matches_PL_2026.json").read_bytes()
@@ -22,6 +23,11 @@ E0_SEASON = (FIXTURES / "football_data_co_uk/E0_2026.csv").read_bytes()
 matches, since the terms of the source allow private use only."""
 POL_SEASONS = (FIXTURES / "football_data_co_uk/POL.csv").read_bytes()
 """The same for the extra league file of the Ekstraklasa, with a match that was never played."""
+EPL_SEASON = (FIXTURES / "understat/league_EPL_2026.json").read_bytes()
+"""An answer of Understat in the shape of one for the 2026 Premier League, with made-up values,
+since the site asks robots to stay away: two matches played and one to come."""
+MATCH_ROSTERS = (FIXTURES / "understat/match_90001.json").read_bytes()
+"""The same for the rosters of the first match, three players at home and two away."""
 
 
 class InMemoryStorage:
@@ -122,3 +128,8 @@ def football_data_client(
 def football_data_co_uk_client(adapter: FakeAdapter) -> FootballDataCoUkClient:
     """A client of the fake answers, not limited."""
     return FootballDataCoUkClient(session_with(adapter), RateLimiter(0))
+
+
+def understat_client(adapter: FakeAdapter) -> UnderstatClient:
+    """A client of the fake answers, not limited."""
+    return UnderstatClient(session_with(adapter), RateLimiter(0))

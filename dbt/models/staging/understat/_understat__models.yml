@@ -1,0 +1,77 @@
+models:
+  - name: stg_understat__matches
+    description: Matches of the league seasons in Understat, as of the latest run.
+    columns:
+      - name: match_id
+        description: Match ID in Understat.
+        data_tests:
+          - unique
+          - not_null
+      - name: competition_code
+        description: League code in Understat, such as EPL.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('competitions')
+                field: understat_code
+      - name: season
+        description: Start year of the season, such as 2026 for 2026/27.
+        data_tests:
+          - not_null
+      - name: kickoff_at
+        data_tests:
+          - not_null
+      - name: has_result
+        description: Whether the match is over, with its goals and xG.
+        data_tests:
+          - not_null
+      - name: home_team_key
+        description: Home team ID in Understat, as text.
+        data_tests:
+          - not_null
+      - name: away_team_key
+        description: Away team ID in Understat, as text.
+        data_tests:
+          - not_null
+      - name: home_xg
+        description: Expected goals of the home team; null before the match is over.
+      - name: away_xg
+        description: Expected goals of the away team; null before the match is over.
+      - name: run_date
+        description: Date of the run whose answer the row comes from.
+
+  - name: stg_understat__player_matches
+    description: Players of both rosters of the matches played, one row per player and match.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [match_id, player_id]
+    columns:
+      - name: match_id
+        description: Match ID in Understat, from the path of the file with the rosters.
+        data_tests:
+          - not_null
+          # Rosters without their match would drop out of the marts.
+          - relationships:
+              arguments:
+                to: ref('stg_understat__matches')
+                field: match_id
+      - name: player_id
+        description: Player ID in Understat.
+        data_tests:
+          - not_null
+      - name: team_key
+        description: Team ID in Understat, as text.
+        data_tests:
+          - not_null
+      - name: position
+        description: Position in the line-up, such as GK or FWL; Sub for a substitute.
+      - name: minutes
+        description: Minutes played, without stoppage time.
+      - name: xg
+        description: Expected goals of the player's shots.
+      - name: xa
+        description: Expected assists, the xG of the shots after the player's key passes.
+      - name: loaded_at
+        description: When the run was loaded into raw.

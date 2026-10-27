@@ -1,0 +1,24 @@
+sources:
+  - name: understat
+    description: >
+      Answers to the requests of Understat's own pages, one row per record and run: the matches
+      of each league season with their xG, and the players of both rosters of each match played.
+    schema: "{{ env_var('BQ_RAW_DATASET', 'raw') }}"
+    config:
+      meta:
+        # Its robots.txt asks robots to stay away, so nothing from it becomes public.
+        redistribution: private
+      loaded_at_field: _loaded_at
+    tables:
+      - name: league_matches
+        identifier: understat__league_matches
+        config:
+          # Each run fetches the current seasons, so a week without data means the ingestion
+          # stopped.
+          freshness:
+            warn_after: {count: 8, period: day}
+            error_after: {count: 15, period: day}
+      # No freshness: rosters are fetched once, after the match, so a break between matchdays
+      # leaves runs without them.
+      - name: match_players
+        identifier: understat__match_players

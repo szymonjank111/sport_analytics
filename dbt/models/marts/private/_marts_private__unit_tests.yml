@@ -1,0 +1,36 @@
+unit_tests:
+  - name: player_matches_replace_whole_months_with_new_rosters
+    model: fct_player_matches
+    description: >
+      Rosters of a September match loaded after the last build bring back every September row,
+      the ones built before too, since insert_overwrite replaces the whole month; August, with
+      nothing new, stays out.
+    overrides:
+      macros:
+        is_incremental: true
+    given:
+      - input: ref('stg_understat__player_matches')
+        rows:
+          - {match_id: 1, player_id: 10, team_key: "83", minutes: 90, loaded_at: "2026-08-24 06:00:00+00"}
+          - {match_id: 2, player_id: 10, team_key: "83", minutes: 90, loaded_at: "2026-09-14 06:00:00+00"}
+          - {match_id: 3, player_id: 10, team_key: "83", minutes: 45, loaded_at: "2026-09-28 06:00:00+00"}
+      - input: ref('stg_understat__matches')
+        rows:
+          - {match_id: 1, competition_code: EPL, season: 2026, kickoff_at: "2026-08-23 14:00:00+00"}
+          - {match_id: 2, competition_code: EPL, season: 2026, kickoff_at: "2026-09-13 14:00:00+00"}
+          - {match_id: 3, competition_code: EPL, season: 2026, kickoff_at: "2026-09-27 14:00:00+00"}
+      - input: ref('competitions')
+        rows:
+          - {competition_id: ENG1, understat_code: EPL}
+      - input: ref('team_mapping')
+        rows:
+          - {source: understat, source_team_key: "83", team_id: arsenal}
+          - {source: football_data, source_team_key: "83", team_id: other-club}
+      - input: this
+        rows:
+          - {understat_match_id: 1, match_date: 2026-08-23, loaded_at: "2026-08-24 06:00:00+00"}
+          - {understat_match_id: 2, match_date: 2026-09-13, loaded_at: "2026-09-14 06:00:00+00"}
+    expect:
+      rows:
+        - {understat_match_id: 2, match_date: 2026-09-13, team_id: arsenal, minutes: 90}
+        - {understat_match_id: 3, match_date: 2026-09-27, team_id: arsenal, minutes: 45}

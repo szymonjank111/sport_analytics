@@ -1,10 +1,14 @@
+import logging
 import shlex
+from datetime import date
 
 import pytest
 
 from fakes import (
     CL_MATCHES,
     E0_SEASON,
+    EPL_SEASON,
+    MATCH_ROSTERS,
     PL_MATCHES,
     POL_SEASONS,
     FakeAdapter,
@@ -12,9 +16,10 @@ from fakes import (
     InMemoryStorage,
     football_data_client,
     football_data_co_uk_client,
+    understat_client,
 )
 from sport_analytics.ingestion.cli import Deps, parse_args, run
-from sport_analytics.ingestion.paths import parse_raw_path
+from sport_analytics.ingestion.paths import RawObject, parse_raw_path
 from sport_analytics.ingestion.sources.football_data import COMPETITIONS
 
 EXTRACT = parse_args(
@@ -26,7 +31,11 @@ LOAD = parse_args(shlex.split("load football-data --run-date 2026-10-25"))
 def deps(storage: InMemoryStorage, warehouse: FakeWarehouse, *responses: tuple[int, bytes]) -> Deps:
     adapter = FakeAdapter(*responses)
     return Deps(
-        storage, football_data_client(adapter), football_data_co_uk_client(adapter), warehouse
+        storage,
+        football_data_client(adapter),
+        football_data_co_uk_client(adapter),
+        understat_client(adapter),
+        warehouse,
     )
 
 
@@ -126,3 +135,33 @@ def test_extracts_the_history_of_a_division_and_loads_it_with_an_extra_league() 
     assert stored_seasons(storage) == {("E0", 2024), ("E0", 2025), ("E0", 2026), ("POL", None)}
     [rows] = warehouse.partitions.values()
     assert len(rows) == 3 * 3 + 3
+
+
+def test_extracts_and_loads_league_seasons_with_the_rosters_of_the_matches_played() -> None:
+    storage, warehouse = InMemoryStorage(), FakeWarehouse()
+    answers = [(200, EPL_SEASON), (200, MATCH_ROSTERS), (200, MATCH_ROSTERS)] * 2
+    day = deps(storage, warehouse, *answers)
+    command = "understat --competition EPL --history-from 2025"
+
+    run(parse_args(["extract", *shlex.split(command), "--run-date", "2026-10-25"]), day)
+    run(parse_args(["load", "understat", "--run-date", "2026-10-25"]), day)
+
+    assert stored_seasons(storage) == {("EPL", 2025), ("EPL", 2026)}
+    assert {table: len(rows) for (table, _), rows in warehouse.partitions.items()} == {
+        "understat__league_matches": 2 * 3,
+        "understat__match_players": 2 * 2 * 5,
+    }
+
+
+def test_loads_a_day_without_new_rosters(caplog: pytest.LogCaptureFixture) -> None:
+    caplog.set_level(logging.INFO)
+    storage, warehouse = InMemoryStorage(), FakeWarehouse()
+    season = RawObject("understat", date(2026, 10, 25), "EPL", 2026, "league_matches", "json")
+    storage.write(season.path, EPL_SEASON, "application/json")
+
+    run(parse_args(shlex.split("load understat --run-date 2026-10-25")), deps(storage, warehouse))
+
+    assert [table for table, _ in warehouse.partitions] == ["understat__league_matches"]
+    assert caplog.messages[-1] == (
+        "skipped table=understat__match_players run_date=2026-10-25 reason=no_new_matches"
+    )

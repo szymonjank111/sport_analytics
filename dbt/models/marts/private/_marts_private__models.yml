@@ -1,0 +1,101 @@
+models:
+  - name: fct_player_matches
+    description: >
+      One row per player and match of the top five leagues from Understat: minutes, goals,
+      shots, xG and xA. Private, since Understat asks robots to stay away.
+    config:
+      # The only incremental model, and on purpose: at a few megabytes a full rebuild costs
+      # nothing, but this is how a growing fact table keeps up. insert_overwrite replaces whole
+      # partitions, which in BigQuery costs less than a merge on a key.
+      materialized: incremental
+      incremental_strategy: insert_overwrite
+      partition_by:
+        field: match_date
+        data_type: date
+        granularity: month
+      # Required with a contract: a changed column asks for a full refresh instead of silently
+      # missing from the table.
+      on_schema_change: fail
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [understat_match_id, understat_player_id]
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: xg between 0 and 10 and xa between 0 and 10
+    columns:
+      - name: competition_id
+        data_type: string
+        constraints:
+          - type: not_null
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_competitions')
+                field: competition_id
+      - name: season
+        description: Start year of the season, such as 2026 for 2026/27.
+        data_type: int64
+        constraints:
+          - type: not_null
+      - name: match_date
+        description: Kick-off date in UTC, which also picks the monthly partition.
+        data_type: date
+        constraints:
+          - type: not_null
+      - name: understat_match_id
+        data_type: int64
+        constraints:
+          - type: not_null
+      - name: understat_player_id
+        description: >
+          Player ID in Understat. Players come from this source alone, so there is no canonical
+          player yet.
+        data_type: int64
+        constraints:
+          - type: not_null
+      - name: player_name
+        data_type: string
+      - name: team_id
+        data_type: string
+        constraints:
+          - type: not_null
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_teams')
+                field: team_id
+      - name: is_home
+        data_type: bool
+      - name: position
+        description: Position in the line-up, such as GK or FWL; Sub for a substitute.
+        data_type: string
+      - name: minutes
+        description: Minutes played, without stoppage time.
+        data_type: int64
+      - name: goals
+        data_type: int64
+      - name: own_goals
+        data_type: int64
+      - name: assists
+        data_type: int64
+      - name: shots
+        data_type: int64
+      - name: key_passes
+        description: Passes that led to a shot.
+        data_type: int64
+      - name: xg
+        description: Expected goals of the player's shots.
+        data_type: float64
+      - name: xa
+        description: Expected assists, the xG of the shots after the player's key passes.
+        data_type: float64
+      - name: yellow_cards
+        data_type: int64
+      - name: red_cards
+        data_type: int64
+      - name: loaded_at
+        description: >
+          When the rosters were loaded into raw; an incremental build replaces the months of the
+          rows loaded since the one before.
+        data_type: timestamp

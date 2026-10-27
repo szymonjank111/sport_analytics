@@ -8,7 +8,7 @@ from google.cloud import bigquery
 
 from sport_analytics.ingestion.errors import NothingToLoadError
 from sport_analytics.ingestion.paths import parse_raw_path, run_prefix
-from sport_analytics.ingestion.sources import football_data, football_data_co_uk
+from sport_analytics.ingestion.sources import football_data, football_data_co_uk, understat
 from sport_analytics.ingestion.storage import Storage
 
 logger = logging.getLogger(__name__)
@@ -39,6 +39,8 @@ FOOTBALL_DATA_MATCHES = RawEntity("football_data", "matches", football_data.spli
 FOOTBALL_DATA_CO_UK_MATCHES = RawEntity(
     "football_data_co_uk", "matches", football_data_co_uk.split_matches
 )
+UNDERSTAT_LEAGUE_MATCHES = RawEntity("understat", "league_matches", understat.split_league_matches)
+UNDERSTAT_MATCH_PLAYERS = RawEntity("understat", "match_players", understat.split_match_players)
 
 
 def build_rows(

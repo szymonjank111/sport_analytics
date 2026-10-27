@@ -1,0 +1,5 @@
+{"teams": {}, "players": [], "dates": [
+{"id": "90001", "isResult": true, "h": {"id": "83", "title": "Arsenal", "short_title": "ARS"}, "a": {"id": "294", "title": "Coventry", "short_title": "COV"}, "goals": {"h": "2", "a": "0"}, "xG": {"h": "1.74213", "a": "0.41877"}, "datetime": "2026-08-21 19:00:00", "forecast": {"w": "0.7012", "d": "0.1934", "l": "0.1054"}},
+{"id": "90002", "isResult": true, "h": {"id": "91", "title": "Hull", "short_title": "HUL"}, "a": {"id": "87", "title": "Liverpool", "short_title": "LIV"}, "goals": {"h": "0", "a": "3"}, "xG": {"h": "0.52", "a": "2.18904"}, "datetime": "2026-08-23 15:30:00", "forecast": {"w": "0.0811", "d": "0.1522", "l": "0.7667"}},
+{"id": "90003", "isResult": false, "h": {"id": "80", "title": "Chelsea", "short_title": "CHE"}, "a": {"id": "89", "title": "Manchester United", "short_title": "MUN"}, "goals": {"h": null, "a": null}, "xG": {"h": null, "a": null}, "datetime": "2026-10-31 12:30:00"}
+]}

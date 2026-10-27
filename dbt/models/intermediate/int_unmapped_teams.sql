@@ -24,6 +24,20 @@ football_data_co_uk_teams as (
     from {{ ref('stg_football_data_co_uk__matches') }}
 ),
 
+understat_teams as (
+    select
+        home_team_key as team_key,
+        home_team_name as team_name,
+        competition_code
+    from {{ ref('stg_understat__matches') }}
+    union all
+    select
+        away_team_key,
+        away_team_name,
+        competition_code
+    from {{ ref('stg_understat__matches') }}
+),
+
 source_teams as (
     select
         'football_data' as source,
@@ -45,6 +59,16 @@ source_teams as (
     from football_data_co_uk_teams as teams
     left join {{ ref('competitions') }} as competitions
         on teams.competition_code = competitions.co_uk_code
+    group by teams.team_key
+    union all
+    select
+        'understat' as source,
+        teams.team_key,
+        any_value(teams.team_name) as team_name,
+        any_value(competitions.country) as country
+    from understat_teams as teams
+    left join {{ ref('competitions') }} as competitions
+        on teams.competition_code = competitions.understat_code
     group by teams.team_key
 )
 

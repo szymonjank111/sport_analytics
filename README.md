@@ -42,9 +42,10 @@ flowchart LR
 
 Only code is published. Raw data stays in a private cloud bucket and never enters this
 repository. Free xG data that may be redistributed does not exist for the Ekstraklasa, so
-the public app covers it with results-based models (Elo, Poisson), and xG for the top five
-leagues comes from Understat. The code is [MIT-licensed](LICENSE); the data belongs to its
-sources and is not covered by that license.
+the public app covers it with results-based models (Elo, Poisson). Understat, the source of
+match and player xG for the top five leagues, asks robots to stay away, so its data is fetched
+slowly, each match once, and stays in private datasets. The code is
+[MIT-licensed](LICENSE); the data belongs to its sources and is not covered by that license.
 
 ## Development
 
@@ -64,13 +65,16 @@ uv run --env-file .env dbt deps
 ```
 
 Run the pipeline for a day. The run date decides where the data lands, so a rerun of the
-same day replaces it. Finished seasons of football-data.co.uk are fetched only once:
+same day replaces it. Finished seasons and the rosters of played matches are fetched only
+once:
 
 ```bash
 uv run ingest extract football-data --run-date 2026-10-25    # every competition, this season
 uv run ingest load football-data --run-date 2026-10-25
 uv run ingest extract football-data-co-uk --history-from 2017 --run-date 2026-10-25
 uv run ingest load football-data-co-uk --run-date 2026-10-25
+uv run ingest extract understat --history-from 2022 --run-date 2026-10-25    # hours at first
+uv run ingest load understat --run-date 2026-10-25
 uv run --env-file .env dbt build
 uv run --env-file .env streamlit run app/streamlit_app.py
 ```

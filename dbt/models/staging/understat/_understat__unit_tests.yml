@@ -1,0 +1,32 @@
+unit_tests:
+  - name: understat_rosters_take_their_match_from_the_path
+    model: stg_understat__player_matches
+    description: >
+      The match ID comes from the path of the file, and a match fetched again after its file was
+      removed counts once, from the latest run.
+    given:
+      # SQL, since the other formats cannot express a JSON payload. Fields left out read as null.
+      - input: source('understat', 'match_players')
+        format: sql
+        rows: |
+          select
+            date '2026-08-22' as _run_date, 'EPL' as _competition, 2026 as _season,
+            'gs://raw/raw_private/source=understat/run_date=2026-08-22/competition=EPL/season=2026/match=90001/match_players.json' as _gcs_uri,
+            timestamp '2026-08-22 06:00:00+00' as _loaded_at,
+            json '{"player_id": "5002", "player": "Striker Two", "team_id": "83", "h_a": "h", "position": "FW", "time": "78", "goals": "2", "own_goals": "0", "assists": "0", "shots": "5", "key_passes": "1", "xG": "1.3307", "xA": "0.0521", "yellow_card": "1", "red_card": "0"}' as payload
+          union all
+          select
+            date '2026-08-24', 'EPL', 2026,
+            'gs://raw/raw_private/source=understat/run_date=2026-08-24/competition=EPL/season=2026/match=90001/match_players.json',
+            timestamp '2026-08-24 06:00:00+00',
+            json '{"player_id": "5002", "player": "Striker Two", "team_id": "83", "h_a": "h", "position": "FW", "time": "78", "goals": "2", "own_goals": "0", "assists": "0", "shots": "5", "key_passes": "1", "xG": "1.3307", "xA": "0.0521", "yellow_card": "1", "red_card": "0"}'
+          union all
+          select
+            date '2026-08-24', 'EPL', 2026,
+            'gs://raw/raw_private/source=understat/run_date=2026-08-24/competition=EPL/season=2026/match=90002/match_players.json',
+            timestamp '2026-08-24 06:00:00+00',
+            json '{"player_id": "6002", "player": "Striker Five", "team_id": "294", "h_a": "a", "position": "Sub", "time": "12", "goals": "0", "own_goals": "0", "assists": "1", "shots": "0", "key_passes": "2", "xG": "0", "xA": "0.31", "yellow_card": "0", "red_card": "0"}'
+    expect:
+      rows:
+        - {match_id: 90001, player_id: 5002, team_key: "83", is_home: true, minutes: 78, goals: 2, xg: 1.3307, run_date: 2026-08-24}
+        - {match_id: 90002, player_id: 6002, team_key: "294", is_home: false, minutes: 12, assists: 1, xa: 0.31, run_date: 2026-08-24}

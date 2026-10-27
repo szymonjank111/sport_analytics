@@ -1,0 +1,13 @@
+{"rosters": {
+"h": {
+"700001": {"id": "700001", "goals": "0", "own_goals": "0", "shots": "0", "xG": "0", "time": "90", "player_id": "5001", "team_id": "83", "position": "GK", "player": "Keeper One", "h_a": "h", "yellow_card": "0", "red_card": "0", "roster_in": "0", "roster_out": "0", "key_passes": "0", "assists": "0", "xA": "0", "xGChain": "0.1213", "xGBuildup": "0.1213", "positionOrder": "1"},
+"700002": {"id": "700002", "goals": "2", "own_goals": "0", "shots": "5", "xG": "1.3307", "time": "78", "player_id": "5002", "team_id": "83", "position": "FW", "player": "Striker Two", "h_a": "h", "yellow_card": "1", "red_card": "0", "roster_in": "700003", "roster_out": "0", "key_passes": "1", "assists": "0", "xA": "0.0521", "xGChain": "1.5112", "xGBuildup": "0.0904", "positionOrder": "15"},
+"700003": {"id": "700003", "goals": "0", "own_goals": "0", "shots": "1", "xG": "0.1", "time": "12", "player_id": "5003", "team_id": "83", "position": "Sub", "player": "Winger Three", "h_a": "h", "yellow_card": "0", "red_card": "0", "roster_in": "0", "roster_out": "700002", "key_passes": "0", "assists": "0", "xA": "0", "xGChain": "0.1", "xGBuildup": "0", "positionOrder": "17"}
+},
+"a": {
+"700004": {"id": "700004", "goals": "0", "own_goals": "0", "shots": "0", "xG": "0", "time": "90", "player_id": "6001", "team_id": "294", "position": "GK", "player": "Keeper Four", "h_a": "a", "yellow_card": "0", "red_card": "0", "roster_in": "0", "roster_out": "0", "key_passes": "0", "assists": "0", "xA": "0", "xGChain": "0", "xGBuildup": "0", "positionOrder": "1"},
+"700005": {"id": "700005", "goals": "0", "own_goals": "0", "shots": "2", "xG": "0.41877", "time": "90", "player_id": "6002", "team_id": "294", "position": "FW", "player": "Striker Five", "h_a": "a", "yellow_card": "0", "red_card": "0", "roster_in": "0", "roster_out": "0", "key_passes": "0", "assists": "0", "xA": "0", "xGChain": "0.41877", "xGBuildup": "0", "positionOrder": "15"}
+}
+},
+"shots": {"h": [], "a": []},
+"tmpl": {"home": "", "away": ""}}
